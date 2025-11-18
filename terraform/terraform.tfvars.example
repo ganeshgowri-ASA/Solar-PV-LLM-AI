@@ -1,0 +1,15 @@
+# =============================================================================
+# Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in your values
+# =============================================================================
+
+environment = "production"
+aws_region  = "us-east-1"
+
+cluster_name    = "solar-pv-llm-ai"
+cluster_version = "1.28"
+
+vpc_cidr = "10.0.0.0/16"
+
+database_instance_class = "db.t3.medium"
+redis_node_type         = "cache.t3.medium"

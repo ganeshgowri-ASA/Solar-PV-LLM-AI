@@ -55,9 +55,11 @@ htmlcov/
 # Data files
 data/
 *.csv
-*.json
 *.pkl
 *.parquet
+# Allow sample docs but ignore other JSON files
+*.json
+!sample_docs/*.json
 
 # Temporary files
 tmp/

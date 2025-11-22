@@ -1,1 +1,1 @@
-"""Integration tests for RAG pipeline."""
+"""Integration tests for the orchestrator."""

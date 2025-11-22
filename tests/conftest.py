@@ -1,52 +1,83 @@
-"""
-Pytest configuration and fixtures.
-"""
+"""Pytest configuration and fixtures."""
+
 import pytest
-from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock, MagicMock
+import os
 
-from app.main import app
-from app.core.config import settings
+# Set test environment variables
+os.environ["OPENAI_API_KEY"] = "test-openai-key"
+os.environ["ANTHROPIC_API_KEY"] = "test-anthropic-key"
 
-
-@pytest.fixture
-def client():
-    """Create test client."""
-    return TestClient(app)
+from src.orchestrator.models import LLMResponse, LLMProvider, QueryType
 
 
 @pytest.fixture
-def auth_headers():
-    """Authentication headers for testing."""
-    return {"X-API-Key": settings.API_KEY}
-
-
-@pytest.fixture
-def sample_pv_input():
-    """Sample PV system input for testing."""
+def mock_gpt_response():
+    """Mock GPT response."""
     return {
-        "panel_capacity_kw": 5.0,
-        "panel_efficiency": 0.2,
-        "system_losses": 0.14,
-        "tilt_angle": 30.0,
-        "azimuth_angle": 180.0,
-        "location_lat": 37.7749,
-        "location_lon": -122.4194
+        "content": "This is a GPT-4o response about solar panels.",
+        "tokens_used": 150,
+        "model": "gpt-4o",
+        "finish_reason": "stop",
+        "metadata": {
+            "prompt_tokens": 50,
+            "completion_tokens": 100,
+        },
     }
 
 
 @pytest.fixture
-def sample_image_base64():
-    """Sample base64 encoded image for testing."""
-    # Simple 1x1 pixel PNG image
-    return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+def mock_claude_response():
+    """Mock Claude response."""
+    return {
+        "content": "This is a Claude 3.5 response about solar panels.",
+        "tokens_used": 160,
+        "model": "claude-3-5-sonnet-20241022",
+        "stop_reason": "end_turn",
+        "metadata": {
+            "input_tokens": 55,
+            "output_tokens": 105,
+        },
+    }
 
 
 @pytest.fixture
-def sample_chat_request():
-    """Sample chat request for testing."""
-    return {
-        "query": "What is the optimal tilt angle for solar panels?",
-        "use_rag": True,
-        "max_tokens": 500,
-        "temperature": 0.7
-    }
+def sample_llm_response_gpt():
+    """Sample LLM response from GPT."""
+    return LLMResponse(
+        provider=LLMProvider.GPT,
+        content="GPT response content",
+        model="gpt-4o",
+        tokens_used=150,
+        latency_ms=500.0,
+    )
+
+
+@pytest.fixture
+def sample_llm_response_claude():
+    """Sample LLM response from Claude."""
+    return LLMResponse(
+        provider=LLMProvider.CLAUDE,
+        content="Claude response content",
+        model="claude-3-5-sonnet-20241022",
+        tokens_used=160,
+        latency_ms=550.0,
+    )
+
+
+@pytest.fixture
+def mock_gpt_client():
+    """Mock GPT client."""
+    client = AsyncMock()
+    client.generate = AsyncMock()
+    client.generate_with_image = AsyncMock()
+    return client
+
+
+@pytest.fixture
+def mock_claude_client():
+    """Mock Claude client."""
+    client = AsyncMock()
+    client.generate = AsyncMock()
+    client.generate_with_image = AsyncMock()
+    return client

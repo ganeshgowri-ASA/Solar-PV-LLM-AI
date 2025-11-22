@@ -1,207 +1,368 @@
-# Solar-PV-LLM-AI
+# Solar PV Multi-LLM Orchestrator
 
-Repository for developing Solar PV AI LLM system with incremental training, RAG, citation, and autonomous delivery. Built for broad audiences from beginners to experts.
+An intelligent multi-LLM orchestration system for Solar PV queries that intelligently routes questions between GPT-4o and Claude 3.5 Sonnet based on query type and complexity.
 
-## 🚀 Features
+## Features
 
-- **Vector Store Integration**: Pinecone-based vector database with OpenAI embeddings
-- **Intelligent Search**: Semantic similarity search with Solar PV specific filtering
-- **Document Ingestion**: Batch processing of Solar PV technical documents
-- **RESTful API**: FastAPI-based endpoints for all vector operations
-- **Comprehensive Logging**: Structured logging with detailed error tracking
-- **QA Testing**: Complete test suite for validation
+- **Intelligent Query Classification**: Automatically classifies queries into 5 types:
+  - Standard Interpretation
+  - Calculation
+  - Image Analysis
+  - Technical Explanation
+  - Code Generation
 
-## 📋 Quick Start
+- **Smart LLM Routing**: Routes queries to the most appropriate LLM based on:
+  - Query type and complexity
+  - Classification confidence
+  - User preferences
 
-### Prerequisites
+- **Fallback & Hybrid Responses**:
+  - Automatic fallback to alternative LLM on failure
+  - Hybrid responses combining insights from multiple LLMs
+  - Intelligent response synthesis
 
-- Python 3.8+
-- Pinecone API key
-- OpenAI API key
+- **Production-Ready API**: FastAPI-based REST API with:
+  - Comprehensive documentation (OpenAPI/Swagger)
+  - Health checks and monitoring
+  - CORS support
+  - Structured logging
+
+## Architecture
+
+```
+┌─────────────────┐
+│  User Query     │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Classifier     │ ──► Determines query type
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Router         │ ──► Selects appropriate LLM(s)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  LLM Clients    │ ──► GPT-4o / Claude 3.5
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Synthesizer    │ ──► Combines responses
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Final Response │
+└─────────────────┘
+```
+
+## Quick Start
 
 ### Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-org/Solar-PV-LLM-AI.git
+git clone https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI.git
 cd Solar-PV-LLM-AI
 ```
 
-2. Create and configure environment:
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Configure environment variables:
 ```bash
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env and add your API keys
 ```
 
-3. Run the server:
+### Configuration
+
+Edit `.env` file:
+```env
+# API Keys (required)
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+# Model Configuration
+GPT_MODEL=gpt-4o
+CLAUDE_MODEL=claude-3-5-sonnet-20241022
+
+# Orchestrator Configuration
+DEFAULT_LLM=auto                    # auto, gpt, or claude
+ENABLE_FALLBACK=true               # Enable automatic fallback
+ENABLE_HYBRID_SYNTHESIS=true       # Enable hybrid responses
+CLASSIFICATION_THRESHOLD=0.7       # Confidence threshold
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+LOG_LEVEL=INFO
+```
+
+### Running the Service
+
+Start the orchestrator service:
 ```bash
-chmod +x run_server.sh
-./run_server.sh
+python main.py
 ```
 
-The API will be available at http://localhost:8000 with interactive docs at http://localhost:8000/docs
+The API will be available at `http://localhost:8000`
 
-### Quick Test
+Access the interactive API documentation at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
-Run the QA test suite:
-```bash
-python tests/test_vector_store.py
+## Usage
+
+### API Endpoints
+
+#### POST `/api/v1/query`
+Process a query through the orchestrator.
+
+**Request:**
+```json
+{
+  "query": "Calculate the energy yield for a 10kW solar system in California",
+  "query_type": "calculation",
+  "max_tokens": 2000,
+  "temperature": 0.7
+}
 ```
 
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                       FastAPI REST API                       │
-│         /ingest  |  /search  |  /delete  |  /stats          │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                   ┌───────▼────────┐
-                   │ Vector Store   │
-                   │    Handler     │
-                   └────┬──────┬────┘
-                        │      │
-          ┌─────────────┘      └─────────────┐
-          │                                   │
-   ┌──────▼──────┐                    ┌──────▼──────┐
-   │  Embedding  │                    │  Pinecone   │
-   │   Service   │                    │   Client    │
-   │  (OpenAI)   │                    │  (Vectors)  │
-   └─────────────┘                    └─────────────┘
+**Response:**
+```json
+{
+  "response": "Detailed calculation response...",
+  "primary_llm": "gpt",
+  "query_type": "calculation",
+  "classification_confidence": 0.92,
+  "is_hybrid": false,
+  "fallback_used": false,
+  "total_latency_ms": 1234.56
+}
 ```
 
-## 📚 Documentation
+#### GET `/api/v1/health`
+Check service health status.
 
-- [Vector Store Integration Guide](VECTOR_STORE_INTEGRATION.md) - Comprehensive documentation
-- [API Documentation](http://localhost:8000/docs) - Interactive Swagger UI (when server is running)
+#### GET `/api/v1/models`
+List available models and configuration.
 
-## 🔑 Key Technologies
-
-- **Pinecone**: Serverless vector database with cosine similarity
-- **OpenAI**: text-embedding-3-large (1536 dimensions)
-- **FastAPI**: Modern, fast web framework for APIs
-- **Pydantic**: Data validation using Python type annotations
-
-## 📊 Supported Filters
-
-The system supports Solar PV specific metadata filtering:
-
-- `standards`: IEC 61215, IEC 61730, IEC 62804, etc.
-- `clauses`: MQT 11, MST 09, etc.
-- `test_type`: performance, safety, reliability
-- `category`: Custom categorization
-
-## 🧪 Example Usage
+#### GET `/api/v1/query-types`
+List supported query types with examples.
 
 ### Python Client Example
 
 ```python
-from src.vector_store.handler import VectorStoreHandler
+import httpx
+import asyncio
 
-# Initialize handler
-handler = VectorStoreHandler()
+async def query_orchestrator(query: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "http://localhost:8000/api/v1/query",
+            json={
+                "query": query,
+                "max_tokens": 2000,
+                "temperature": 0.7
+            }
+        )
+        return response.json()
 
-# Ingest documents
-documents = [
-    {
-        "text": "IEC 61215 thermal cycling test...",
-        "metadata": {
-            "standards": "IEC 61215",
-            "test_type": "reliability"
-        }
-    }
-]
-handler.ingest_documents(documents)
-
-# Search with filters
-results = handler.search_with_filters(
-    query="thermal testing requirements",
-    standards="IEC 61215",
-    test_type="reliability"
-)
+# Example usage
+result = asyncio.run(query_orchestrator(
+    "How does MPPT tracking work in solar inverters?"
+))
+print(result["response"])
 ```
 
 ### cURL Example
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/search/filtered" \
+curl -X POST "http://localhost:8000/api/v1/query" \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "thermal cycling test",
-    "top_k": 5,
-    "standards": "IEC 61215",
-    "test_type": "reliability"
+    "query": "Calculate ROI for a 20kW commercial solar installation",
+    "query_type": "calculation"
   }'
 ```
 
-## 🔧 Development
+## Query Types
 
-### Project Structure
+### 1. Standard Interpretation
+General questions about solar PV systems.
+
+**Examples:**
+- "What is a solar inverter?"
+- "Explain how solar panels work"
+
+### 2. Calculation
+Numerical calculations and system sizing.
+
+**Examples:**
+- "Calculate energy yield for a 10kW system"
+- "Size inverter for 20 panels of 400W each"
+
+### 3. Image Analysis
+Visual inspection and analysis (requires image data).
+
+**Examples:**
+- "Analyze this thermal image of solar panels"
+- "Inspect this PV array layout"
+
+### 4. Technical Explanation
+Detailed technical explanations.
+
+**Examples:**
+- "How does MPPT tracking work?"
+- "Explain the physics of the photovoltaic effect"
+
+### 5. Code Generation
+Generate code for PV simulations and analysis.
+
+**Examples:**
+- "Write Python code to calculate shading losses"
+- "Generate a PV system simulation script"
+
+## Testing
+
+Run the test suite:
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src/orchestrator --cov-report=html
+
+# Run specific test categories
+pytest tests/unit/
+pytest tests/integration/
+```
+
+## Project Structure
 
 ```
 Solar-PV-LLM-AI/
 ├── src/
-│   ├── api/              # API routes and models
-│   ├── config/           # Configuration management
-│   ├── logging/          # Logging setup
-│   ├── utils/            # Utilities and errors
-│   ├── vector_store/     # Vector store implementation
-│   └── main.py           # Application entry point
-├── tests/                # Test suite
-├── sample_docs/          # Sample Solar PV documents
-└── requirements.txt      # Python dependencies
+│   └── orchestrator/
+│       ├── __init__.py
+│       ├── config.py              # Configuration management
+│       ├── models.py              # Data models
+│       ├── service.py             # Main orchestrator service
+│       ├── clients/               # LLM API clients
+│       │   ├── base.py
+│       │   ├── gpt_client.py
+│       │   └── claude_client.py
+│       ├── classifier/            # Query classification
+│       │   └── semantic_classifier.py
+│       ├── router/                # LLM routing logic
+│       │   └── llm_router.py
+│       ├── synthesizer/           # Response synthesis
+│       │   └── response_synthesizer.py
+│       ├── prompts/               # Prompt templates
+│       │   └── templates.py
+│       └── api/                   # REST API
+│           └── app.py
+├── tests/
+│   ├── unit/                      # Unit tests
+│   └── integration/               # Integration tests
+├── main.py                        # Application entry point
+├── requirements.txt               # Python dependencies
+├── .env.example                   # Environment template
+└── README.md                      # This file
 ```
 
-### Running Tests
+## Advanced Features
 
-```bash
-# Run QA test suite
-python tests/test_vector_store.py
+### Hybrid Responses
 
-# Expected: All tests pass with verification of:
-# - Document ingestion
-# - Similarity search
-# - Filter correctness
-# - Deletion operations
-# - Index statistics
+Enable hybrid mode to get responses from both LLMs for complex queries:
+
+```json
+{
+  "query": "Comprehensive analysis of monocrystalline vs polycrystalline panels",
+  "preferred_llm": "hybrid"
+}
 ```
 
-## 🎯 Roadmap
+### Explicit LLM Selection
 
-- [x] Vector store integration with Pinecone
-- [x] OpenAI embedding generation
-- [x] Batch document ingestion
-- [x] Similarity search with filtering
-- [x] RESTful API endpoints
-- [ ] RAG pipeline integration
-- [ ] LLM-based question answering
-- [ ] Citation tracking
-- [ ] Multi-modal support
-- [ ] Authentication and authorization
-- [ ] Production monitoring
+Override automatic routing:
 
-## 📖 Use Cases
+```json
+{
+  "query": "Your question here",
+  "preferred_llm": "claude"  // or "gpt"
+}
+```
 
-1. **Solar PV Standards Search**: Query across IEC standards with semantic understanding
-2. **Test Procedure Discovery**: Find relevant test procedures by description
-3. **Compliance Checking**: Filter by standards and test types
-4. **Knowledge Management**: Centralized Solar PV technical knowledge base
-5. **RAG Applications**: Foundation for question-answering systems
+### Image Analysis
 
-## 🤝 Contributing
+Include base64-encoded images:
 
-Contributions are welcome! Please see our contributing guidelines.
+```json
+{
+  "query": "Analyze defects in this thermal image",
+  "image_data": "base64_encoded_image_data_here"
+}
+```
 
-## 📝 License
+## Monitoring & Logging
 
-See LICENSE file for details.
+The service uses structured logging with different levels:
+- INFO: Normal operations
+- WARNING: Potential issues
+- ERROR: Errors and failures
 
-## 🔗 Links
+Logs include:
+- Request/response timing
+- Classification results
+- Routing decisions
+- LLM interactions
+- Error traces
 
-- [Pinecone Documentation](https://docs.pinecone.io/)
-- [OpenAI Embeddings](https://platform.openai.com/docs/guides/embeddings)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+## Performance
 
-## 📧 Support
+Typical response times:
+- Simple queries: 1-3 seconds
+- Complex calculations: 2-5 seconds
+- Image analysis: 3-7 seconds
+- Hybrid responses: 4-8 seconds
 
-For issues or questions, please open an issue on GitHub.
+## Roadmap
+
+- [ ] RAG integration for Solar PV knowledge base
+- [ ] Citation tracking and source attribution
+- [ ] Streaming responses
+- [ ] Multi-language support
+- [ ] Enhanced metrics and analytics
+- [ ] Cost optimization and caching
+
+## Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Support
+
+For issues and questions:
+- GitHub Issues: https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI/issues
+- Documentation: See `/docs` endpoint
+
+## Acknowledgments
+
+Built for the Solar PV AI project to provide intelligent, context-aware responses for users ranging from beginners to experts.

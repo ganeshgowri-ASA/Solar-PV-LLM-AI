@@ -1,206 +1,214 @@
+#!/usr/bin/env python3
 """
-Advanced usage examples for Solar PV Multi-Agent System
-
-This example demonstrates:
-1. Custom configurations
-2. Direct agent access
-3. Detailed response analysis
-4. Error handling
+Advanced usage examples for IEC PDF ingestion pipeline.
 """
 
-import asyncio
-from src.api import SolarPVMultiAgent
-from src.core.config import SystemConfig
-from src.core.protocols import Message, MessageRole
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.ingestion import IECPDFLoader
+from src.metadata import IECMetadataExtractor
+from src.chunking import SemanticChunker, ChunkConfig
+from src.qa_generation import QAGenerator, QAConfig
+from src.storage import JSONStorage
 
 
-async def custom_configuration_example():
-    """Example with custom configuration"""
-    print("\n" + "="*80)
-    print("Example: Custom Configuration")
-    print("="*80)
+def example_1_component_usage():
+    """Example: Using individual components."""
+    print("Example 1: Using Individual Components")
+    print("=" * 60)
 
-    # Create custom configuration
-    custom_config = SystemConfig(
-        default_model="gpt-4-turbo-preview",
-        supervisor_model="gpt-4-turbo-preview",
-        agent_temperature=0.5,  # Lower temperature for more consistent responses
-        max_iterations=3
+    # Load PDF
+    loader = IECPDFLoader()
+    pdf_path = "data/raw/sample.pdf"
+
+    if not Path(pdf_path).exists():
+        print(f"⚠ PDF not found: {pdf_path}")
+        return
+
+    pdf_data, sections = loader.load_and_structure(pdf_path)
+    print(f"Loaded {len(sections)} sections from PDF")
+
+    # Extract metadata
+    extractor = IECMetadataExtractor()
+    metadata = extractor.extract_document_metadata(pdf_data['text'])
+    print(f"Standard ID: {metadata.standard_id}")
+    print(f"Title: {metadata.title}")
+
+    # Chunk first section
+    if sections:
+        chunker = SemanticChunker(ChunkConfig(chunk_size=500))
+        chunks = chunker.chunk_section(
+            sections[0].content,
+            sections[0].clause_number,
+            sections[0].clause_title
+        )
+        print(f"Created {len(chunks)} chunks from first section")
+
+    print()
+
+
+def example_2_custom_qa_generation():
+    """Example: Custom Q&A generation."""
+    print("Example 2: Custom Q&A Generation")
+    print("=" * 60)
+
+    # Configure Q&A generator
+    qa_config = QAConfig(
+        model="gpt-4-turbo-preview",
+        max_questions_per_chunk=5,
+        min_confidence=0.8,
+        temperature=0.2
     )
 
-    agent_system = SolarPVMultiAgent(
-        system_config=custom_config,
-        log_level="DEBUG"
+    qa_generator = QAGenerator(qa_config)
+
+    sample_text = """
+    The thermal cycling test shall subject the module to 200 cycles
+    between -40°C and +85°C. The temperature transition rate shall
+    not exceed 100°C per hour. This test evaluates the module's
+    ability to withstand thermal stress.
+    """
+
+    qa_pairs = qa_generator.generate_qa_pairs(
+        text=sample_text,
+        chunk_id="example_001",
+        clause_number="5.2.3",
+        clause_title="Thermal cycling test",
+        standard_id="IEC 61215-1"
     )
 
-    result = await agent_system.query(
-        "Explain the difference between IEC 61215 and IEC 61730"
-    )
+    print(f"Generated {len(qa_pairs)} Q&A pairs:")
+    for i, qa in enumerate(qa_pairs, 1):
+        print(f"\n  Q{i}: {qa.question}")
+        print(f"  A{i}: {qa.answer}")
+        print(f"  Confidence: {qa.confidence:.2f}")
+        print(f"  Type: {qa.question_type}")
 
-    print(f"Response: {result['response'][:300]}...")
-    print(f"Configuration used:")
-    print(f"  - Model: {custom_config.default_model}")
-    print(f"  - Temperature: {custom_config.agent_temperature}")
-
-
-async def detailed_response_analysis():
-    """Example showing detailed response analysis"""
-    print("\n" + "="*80)
-    print("Example: Detailed Response Analysis")
-    print("="*80)
-
-    agent_system = SolarPVMultiAgent(log_level="INFO")
-
-    result = await agent_system.query(
-        "What are the common causes of underperformance in solar PV systems?"
-    )
-
-    print(f"Query: What are common causes of underperformance?")
-    print(f"\nRouting Information:")
-    if 'routing_info' in result:
-        routing = result['routing_info']
-        print(f"  - Primary Agents: {routing.get('primary_agents', [])}")
-        print(f"  - Collaboration Required: {routing.get('requires_collaboration', False)}")
-        print(f"  - Routing Confidence: {routing.get('confidence', 0):.2f}")
-        print(f"  - Task Type: {routing.get('task_type', 'unknown')}")
-
-    print(f"\nAgent Details:")
-    if 'agent_details' in result:
-        for detail in result['agent_details']:
-            print(f"  - {detail['agent_type']}:")
-            print(f"      Confidence: {detail['confidence']:.2f}")
-            if detail.get('reasoning'):
-                print(f"      Reasoning: {detail['reasoning'][:100]}...")
-
-    print(f"\nExecution Metrics:")
-    print(f"  - Total Agents Used: {len(result.get('agents_used', []))}")
-    print(f"  - Execution Time: {result.get('execution_time', 0):.2f}s")
-
-    print(f"\nFinal Response:")
-    print(f"{result['response'][:500]}...")
+    print()
 
 
-async def error_handling_example():
-    """Example showing error handling"""
-    print("\n" + "="*80)
-    print("Example: Error Handling")
-    print("="*80)
+def example_3_batch_processing():
+    """Example: Batch processing multiple PDFs."""
+    print("Example 3: Batch Processing")
+    print("=" * 60)
 
-    agent_system = SolarPVMultiAgent(log_level="ERROR")
+    from src.pipeline import create_pipeline
 
-    # Test with various edge cases
-    test_cases = [
-        "",  # Empty query
-        "What is the weather today?",  # Off-topic query
-        "Tell me about solar " * 100,  # Very long query
+    pipeline = create_pipeline()
+
+    # List of PDFs to process
+    pdf_paths = [
+        "data/raw/IEC_61215-1.pdf",
+        "data/raw/IEC_61215-2.pdf",
+        "data/raw/IEC_62804-1.pdf"
     ]
 
-    for i, query in enumerate(test_cases, 1):
-        print(f"\nTest Case {i}:")
-        print(f"Query: {query[:50]}..." if len(query) > 50 else f"Query: '{query}'")
+    # Filter to existing files
+    existing_pdfs = [p for p in pdf_paths if Path(p).exists()]
 
-        try:
-            result = await agent_system.query(query)
+    if not existing_pdfs:
+        print("⚠ No PDFs found. Please add PDF files to data/raw/")
+        return
 
-            if 'error' in result:
-                print(f"Error handled gracefully: {result['error']}")
-            else:
-                print(f"Response received (agents: {len(result.get('agents_used', []))})")
-                print(f"Response preview: {result['response'][:100]}...")
+    print(f"Processing {len(existing_pdfs)} PDFs...")
 
-        except Exception as e:
-            print(f"Exception caught: {type(e).__name__}: {str(e)}")
+    results = pipeline.process_batch(existing_pdfs)
 
+    successful = sum(1 for r in results if r['success'])
+    print(f"\nCompleted: {successful}/{len(results)} successful")
 
-async def multi_query_batch():
-    """Example of processing multiple queries"""
-    print("\n" + "="*80)
-    print("Example: Batch Query Processing")
-    print("="*80)
-
-    agent_system = SolarPVMultiAgent(log_level="WARNING")
-
-    queries = [
-        "What is IEC 61215?",
-        "How do I test PV modules?",
-        "What is performance ratio?",
-        "What are soiling losses?",
-        "How to commission a solar system?"
-    ]
-
-    print(f"Processing {len(queries)} queries...")
-
-    # Process queries sequentially
-    results = []
-    for query in queries:
-        result = await agent_system.query(query)
-        results.append(result)
-
-    # Analyze results
-    print("\nResults Summary:")
-    for i, (query, result) in enumerate(zip(queries, results), 1):
-        print(f"\n{i}. {query}")
-        print(f"   Agents: {', '.join(result.get('agents_used', []))}")
-        print(f"   Time: {result.get('execution_time', 0):.2f}s")
-        print(f"   Response length: {len(result.get('response', ''))} chars")
-
-    total_time = sum(r.get('execution_time', 0) for r in results)
-    print(f"\nTotal Processing Time: {total_time:.2f}s")
-    print(f"Average Time per Query: {total_time / len(queries):.2f}s")
+    print()
 
 
-async def agent_comparison():
-    """Compare responses from different agents for the same query"""
-    print("\n" + "="*80)
-    print("Example: Agent Response Comparison")
-    print("="*80)
+def example_4_custom_storage():
+    """Example: Custom storage and export."""
+    print("Example 4: Custom Storage and Export")
+    print("=" * 60)
 
-    agent_system = SolarPVMultiAgent(log_level="WARNING")
+    storage = JSONStorage("data/processed")
 
-    query = "What standards apply to solar module testing?"
+    # List all processed documents
+    documents = storage.list_processed_documents()
 
-    # Get responses from each agent type
-    agent_types = ["iec_standards_expert", "testing_specialist", "performance_analyst"]
+    if not documents:
+        print("No processed documents found.")
+        return
 
-    print(f"Query: {query}\n")
+    print(f"Found {len(documents)} processed documents:")
+    for doc in documents[:5]:  # Show first 5
+        print(f"  - {doc['filename']} ({doc['chunk_count']} chunks)")
 
-    for agent_type in agent_types:
-        result = await agent_system.query_specific_agent(agent_type, query)
+    # Get statistics for first document
+    if documents:
+        first_doc = documents[0]
+        stats = storage.get_statistics(first_doc['path'])
 
-        if result:
-            print(f"{agent_type}:")
-            print(f"  Confidence: {result['confidence']:.2f}")
-            print(f"  Response: {result['response'][:200]}...")
-            print()
+        print(f"\nStatistics for {first_doc['filename']}:")
+        print(f"  Total chunks: {stats.get('total_chunks', 0)}")
+        print(f"  Total Q&A pairs: {stats.get('total_qa_pairs', 0)}")
+        print(f"  Avg chunk size: {stats.get('avg_chunk_size', 0):.0f} chars")
+
+    print()
 
 
-async def main():
-    """Run all advanced examples"""
+def example_5_metadata_extraction():
+    """Example: Detailed metadata extraction."""
+    print("Example 5: Detailed Metadata Extraction")
+    print("=" * 60)
+
+    extractor = IECMetadataExtractor()
+
+    # Sample IEC standard text
+    sample_text = """
+    IEC 61215-1:2021
+
+    Terrestrial photovoltaic (PV) modules –
+    Design qualification and type approval –
+    Part 1: Test requirements
+
+    Edition 4.0
+
+    © IEC 2021
+
+    1 Scope
+
+    This part of IEC 61215 lays down requirements for the design
+    qualification and type approval of terrestrial photovoltaic modules
+    suitable for long-term operation in general open-air climates.
+    """
+
+    metadata = extractor.extract_document_metadata(sample_text)
+
+    print(f"Standard ID: {metadata.standard_id}")
+    print(f"Edition: {metadata.edition}")
+    print(f"Year: {metadata.year}")
+    print(f"Title: {metadata.title}")
+    print(f"Keywords: {', '.join(metadata.keywords[:5])}")
+
+    # Extract scope
+    scope = extractor.extract_scope(sample_text)
+    if scope:
+        print(f"\nScope: {scope[:100]}...")
+
+    print()
+
+
+if __name__ == '__main__':
+    print("IEC PDF Pipeline - Advanced Usage Examples\n")
 
     examples = [
-        ("Custom Configuration", custom_configuration_example),
-        ("Detailed Response Analysis", detailed_response_analysis),
-        ("Error Handling", error_handling_example),
-        ("Batch Query Processing", multi_query_batch),
-        ("Agent Comparison", agent_comparison),
+        example_1_component_usage,
+        example_2_custom_qa_generation,
+        example_3_batch_processing,
+        example_4_custom_storage,
+        example_5_metadata_extraction
     ]
 
-    for name, example_func in examples:
+    for example in examples:
         try:
-            await example_func()
+            example()
         except Exception as e:
-            print(f"\nError in {name}: {type(e).__name__}: {str(e)}")
-
-        print("\n" + "-"*80)
-
-
-if __name__ == "__main__":
-    print("""
-╔════════════════════════════════════════════════════════════════════════════╗
-║              Solar PV Multi-Agent System - Advanced Usage                  ║
-╚════════════════════════════════════════════════════════════════════════════╝
-    """)
-
-    asyncio.run(main())
-
-    print("\nAdvanced examples completed!")
+            print(f"⚠ Example failed: {e}\n")

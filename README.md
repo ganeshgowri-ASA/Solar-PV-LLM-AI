@@ -1,403 +1,220 @@
-# Solar PV LLM AI
+# Solar-PV-LLM-AI
 
-AI-powered Solar Photovoltaic analysis platform with incremental training, Retrieval-Augmented Generation (RAG), citation tracking, and autonomous delivery system. Built for broad audiences from beginners to experts.
+Repository for developing Solar PV AI LLM system with incremental training, RAG, citation, and autonomous delivery. Built for broad audiences from beginners to experts.
 
-[![CI/CD](https://github.com/your-org/Solar-PV-LLM-AI/workflows/CI/CD%20Pipeline/badge.svg)](https://github.com/your-org/Solar-PV-LLM-AI/actions)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
-[![React](https://img.shields.io/badge/react-18.2-blue.svg)](https://reactjs.org/)
+## IEC PDF Ingestion Pipeline
 
-## Features
+A comprehensive pipeline for processing IEC (International Electrotechnical Commission) standard documents with intelligent chunking, metadata extraction, and Q&A generation optimized for RAG systems.
 
-- **Incremental Training**: Continuously improve ML models with new data
-- **RAG (Retrieval-Augmented Generation)**: AI-powered question answering with source citations
-- **Multi-Audience Support**: Adaptive responses for beginners to experts
-- **Real-time Analytics**: Monitor solar PV system performance
-- **Autonomous Delivery**: Automated ML model deployment and monitoring
-- **Production-Ready**: Fully containerized with Kubernetes orchestration
-- **Scalable Architecture**: Auto-scaling based on load
-- **Comprehensive Monitoring**: Prometheus + Grafana observability
+### Features
 
-## Architecture
+- **Intelligent PDF Loading**: Preserves section/clause structure from IEC standards
+- **Metadata Extraction**: Automatically extracts standard ID, edition, year, clause numbers, and titles
+- **Semantic Chunking**: Recursive chunking with clause-aware overlap
+- **Q&A Generation**: Creates atomic question-answer pairs for each chunk
+- **Structured Storage**: JSON output with comprehensive metadata
+- **CLI & Python API**: Easy-to-use interfaces for both command-line and programmatic access
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Load Balancer                        │
-└────────────────┬────────────────────────────────────────┘
-                 │
-        ┌────────┴─────────┬────────────┬─────────────┐
-        │                  │            │             │
-   ┌────▼────┐      ┌─────▼──────┐  ┌──▼──────┐  ┌──▼────────┐
-   │Frontend │      │  Backend   │  │ Celery  │  │ Flower    │
-   │(React)  │      │  (FastAPI) │  │ Workers │  │(Monitor)  │
-   └─────────┘      └─────┬──────┘  └────┬────┘  └───────────┘
-                          │              │
-                 ┌────────┴──────────────┴────────┐
-                 │                                 │
-           ┌─────▼──────┐                   ┌─────▼──────┐
-           │ PostgreSQL │                   │   Redis    │
-           │  Database  │                   │   Cache    │
-           └────────────┘                   └────────────┘
-```
+### Quick Start
 
-## Technology Stack
-
-### Backend
-- **FastAPI**: Modern Python web framework
-- **SQLAlchemy**: ORM for database operations
-- **Celery**: Distributed task queue
-- **PyTorch**: Machine learning framework
-- **LangChain**: RAG implementation
-- **Pydantic**: Data validation
-
-### Frontend
-- **React**: UI framework
-- **TailwindCSS**: Utility-first CSS
-- **React Query**: Data fetching and caching
-- **Recharts**: Data visualization
-
-### Infrastructure
-- **Docker**: Containerization
-- **Kubernetes**: Orchestration
-- **Terraform**: Infrastructure as Code
-- **GitHub Actions**: CI/CD
-- **Prometheus**: Metrics
-- **Grafana**: Visualization
-
-### Databases
-- **PostgreSQL**: Primary database
-- **Redis**: Caching and message broker
-- **Vector Database**: RAG embeddings (pgvector/Pinecone/Weaviate)
-
-## Quick Start
-
-### Prerequisites
-
-- Docker (v24.0+)
-- Docker Compose (v2.20+)
-- Git
-
-### Local Development
+#### Installation
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/Solar-PV-LLM-AI.git
+git clone https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI.git
 cd Solar-PV-LLM-AI
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your settings
-
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Access services
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:8000
-# API Docs: http://localhost:8000/api/docs
-# Flower: http://localhost:5555
-```
-
-### Production Deployment
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for comprehensive deployment instructions.
-
-```bash
-# Quick production deployment to Kubernetes
-cd terraform
-terraform init
-terraform apply
-
-# Deploy application
-kubectl apply -f kubernetes/
-```
-
-## API Documentation
-
-Once the backend is running, access interactive API documentation:
-
-- **Swagger UI**: http://localhost:8000/api/docs
-- **ReDoc**: http://localhost:8000/api/redoc
-
-### Example API Calls
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# List solar PV systems
-curl http://localhost:8000/api/v1/solar-pv/systems
-
-# Make prediction
-curl -X POST http://localhost:8000/api/v1/ml/predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "features": {
-      "temperature": 25,
-      "irradiance": 800,
-      "humidity": 60
-    },
-    "model_name": "solar_efficiency_predictor"
-  }'
-
-# RAG query
-curl -X POST http://localhost:8000/api/v1/rag/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "question": "What is the optimal angle for solar panels?",
-    "audience_level": "beginner"
-  }'
-```
-
-## Development
-
-### Backend Development
-
-```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Run tests
-pytest
-
-# Run linters
-black .
-flake8 .
-mypy app/
-
-# Run migrations
-alembic upgrade head
-
-# Start development server
-uvicorn app.main:app --reload
+# (Optional) Configure OpenAI API for Q&A generation
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
 ```
 
-### Frontend Development
+#### CLI Usage
+
+Process a single IEC PDF:
 
 ```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm start
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
+./ingest_iec_pdf.py process /path/to/IEC_standard.pdf
 ```
 
-### Workers Development
+Process multiple PDFs:
 
 ```bash
-cd workers
-
-# Start Celery worker
-celery -A celery_app worker --loglevel=info
-
-# Start Celery beat (scheduler)
-celery -A celery_app beat --loglevel=info
-
-# Monitor with Flower
-celery -A celery_app flower
+./ingest_iec_pdf.py batch pdf1.pdf pdf2.pdf pdf3.pdf
 ```
 
-## Testing
-
-### Unit Tests
+Validate processed output:
 
 ```bash
-# Backend
-cd backend
-pytest --cov=app tests/
-
-# Frontend
-cd frontend
-npm test -- --coverage
+./ingest_iec_pdf.py validate data/processed/output.json
 ```
 
-### Integration Tests
+List all processed documents:
 
 ```bash
-# Run all integration tests
-docker-compose -f docker-compose.test.yml up --abort-on-container-exit
+./ingest_iec_pdf.py list-documents
 ```
 
-### Load Testing
+#### Python API Usage
+
+```python
+from src.pipeline import create_pipeline
+
+# Create pipeline
+pipeline = create_pipeline(
+    chunk_size=1000,
+    chunk_overlap=200,
+    enable_qa=True
+)
+
+# Process PDF
+result = pipeline.process_pdf("IEC_61215-1.pdf")
+
+print(f"Created {result['statistics']['total_chunks']} chunks")
+print(f"Generated {result['statistics']['total_qa_pairs']} Q&A pairs")
+```
+
+### Pipeline Architecture
+
+```
+PDF → Load & Structure → Metadata Extraction → Semantic Chunking → Q&A Generation → JSON Storage
+```
+
+**Components:**
+1. **PDF Loader**: Extracts text while preserving clause structure
+2. **Metadata Extractor**: Identifies standard ID, edition, year, clauses
+3. **Semantic Chunker**: Creates intelligent chunks respecting boundaries
+4. **Q&A Generator**: Generates question-answer pairs (OpenAI or rule-based)
+5. **JSON Storage**: Saves structured output with complete metadata
+
+### Output Format
+
+```json
+{
+  "document_metadata": {
+    "source_file": "IEC_61215-1.pdf",
+    "iec_metadata": {
+      "standard_id": "IEC 61215-1",
+      "edition": "4.0",
+      "year": 2021,
+      "title": "Terrestrial photovoltaic (PV) modules"
+    },
+    "total_chunks": 156,
+    "total_pages": 48
+  },
+  "chunks": [
+    {
+      "text": "...",
+      "metadata": {
+        "chunk_id": "iec-61215-1_chunk_001",
+        "clause": {
+          "clause_number": "5.2.3",
+          "clause_title": "Thermal cycling test"
+        },
+        "page_numbers": [15, 16]
+      },
+      "qa_pairs": [
+        {
+          "question": "What is the temperature range for thermal cycling?",
+          "answer": "-40°C to +85°C",
+          "confidence": 0.92,
+          "question_type": "factual"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Configuration
+
+**Chunking:**
+- `chunk_size`: Target chunk size (default: 1000 chars)
+- `chunk_overlap`: Overlap between chunks (default: 200 chars)
+- `respect_clause_boundaries`: Don't split clauses (default: True)
+
+**Q&A Generation:**
+- `model`: OpenAI model (default: "gpt-4-turbo-preview")
+- `max_questions_per_chunk`: Max Q&A pairs per chunk (default: 3)
+- `min_confidence`: Minimum confidence score (default: 0.7)
+
+### Documentation
+
+- [Complete Pipeline Documentation](PIPELINE_DOCUMENTATION.md)
+- [Examples](examples/)
+  - [Basic Usage](examples/basic_usage.py)
+  - [Advanced Usage](examples/advanced_usage.py)
+
+### Testing
+
+Run tests:
 
 ```bash
-# Simple load test
-./scripts/load-test.sh
-
-# Advanced load test with Locust
-cd load-testing
-locust -f locustfile.py --host=http://localhost:8000
+pytest tests/ -v
 ```
 
-## Monitoring
+### Project Structure
 
-### Metrics
+```
+Solar-PV-LLM-AI/
+├── src/
+│   ├── ingestion/          # PDF loading and structure extraction
+│   ├── metadata/           # Metadata schemas and extraction
+│   ├── chunking/           # Semantic chunking logic
+│   ├── qa_generation/      # Q&A pair generation
+│   ├── storage/            # JSON storage and retrieval
+│   └── pipeline.py         # Main pipeline orchestrator
+├── tests/                  # Test suite
+├── examples/               # Usage examples
+├── data/
+│   ├── raw/               # Input PDFs
+│   └── processed/         # Output JSON files
+├── ingest_iec_pdf.py      # CLI script
+├── requirements.txt
+└── README.md
+```
 
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3001 (admin/admin)
-- **Flower**: http://localhost:5555
+### Requirements
 
-### Key Metrics
+- Python 3.8+
+- pdfplumber, PyPDF2 (PDF processing)
+- OpenAI API key (optional, for Q&A generation)
+- See `requirements.txt` for complete list
 
-- API request rate and latency
-- Error rates
-- Database connection pool usage
-- Celery task queue length
-- ML model inference time
-- System resource utilization
+### Validation
 
-## Deployment Strategies
-
-### Rolling Update (Default)
+Built-in validation checks:
+- Chunk count and completeness
+- Metadata extraction accuracy
+- Q&A pair coverage
+- No empty chunks
 
 ```bash
-kubectl set image deployment/backend backend=new-image:v1.2.3 -n solar-pv-llm-ai
+./ingest_iec_pdf.py validate output.json
 ```
 
-### Canary Deployment
+### Performance
 
-```bash
-# Deploy canary with 10% traffic
-kubectl apply -f kubernetes/canary/
-```
+Typical processing times:
+- Small (20 pages): ~30-60s
+- Medium (50 pages): ~1-2min
+- Large (100+ pages): ~3-5min
 
-### Blue-Green Deployment
+### Contributing
 
-```bash
-# Switch traffic to green deployment
-kubectl patch service backend -p '{"spec":{"selector":{"version":"green"}}}'
-```
+Contributions welcome! Please see issues and pull requests.
 
-## Scaling
+### License
 
-### Manual Scaling
+[Your License Here]
 
-```bash
-# Scale backend
-kubectl scale deployment backend --replicas=5 -n solar-pv-llm-ai
+### Contact
 
-# Scale workers
-kubectl scale deployment celery-worker --replicas=3 -n solar-pv-llm-ai
-```
-
-### Auto-scaling
-
-Horizontal Pod Autoscaler (HPA) is configured automatically:
-
-```bash
-# View autoscaling status
-kubectl get hpa -n solar-pv-llm-ai
-```
-
-## Backup & Recovery
-
-### Automated Backups
-
-Backups run daily at 2 AM UTC and are stored in S3:
-
-```bash
-# Manual backup
-./scripts/backup.sh
-
-# Restore from backup
-./scripts/restore.sh
-```
-
-### Disaster Recovery
-
-See [RUNBOOK.md](./RUNBOOK.md) for detailed disaster recovery procedures.
-
-## Rollback
-
-```bash
-# Quick rollback to previous version
-./scripts/rollback.sh
-
-# Rollback specific deployment
-./scripts/rollback.sh 0 backend
-```
-
-## Security
-
-- **Secrets Management**: Kubernetes Secrets / Sealed Secrets
-- **Network Policies**: Pod-to-pod communication restrictions
-- **RBAC**: Role-based access control
-- **SSL/TLS**: Automated certificate management with cert-manager
-- **Image Scanning**: Vulnerability scanning in CI/CD
-- **Non-root Containers**: All containers run as non-root users
-
-## Performance
-
-- **Response Time**: P95 < 200ms
-- **Throughput**: 1000+ requests/second
-- **Availability**: 99.9% uptime SLA
-- **Scalability**: Auto-scales from 2 to 10 pods
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## Documentation
-
-- [Deployment Guide](./DEPLOYMENT.md) - Complete deployment instructions
-- [Operations Runbook](./RUNBOOK.md) - Incident response and operations
-- [API Documentation](http://localhost:8000/api/docs) - Interactive API docs
-- [Architecture Decisions](./docs/architecture.md) - Design decisions (TODO)
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-- **Documentation**: https://docs.your-domain.com
-- **Issues**: https://github.com/your-org/Solar-PV-LLM-AI/issues
-- **Email**: support@your-domain.com
-- **Slack**: #solar-pv-llm-ai
-
-## Roadmap
-
-- [ ] Multi-model support (OpenAI, Anthropic, local models)
-- [ ] Real-time streaming predictions
-- [ ] Mobile app (React Native)
-- [ ] Advanced visualization dashboards
-- [ ] Multi-tenancy support
-- [ ] GraphQL API
-- [ ] Internationalization (i18n)
-- [ ] Advanced ML model versioning
-
-## Acknowledgments
-
-- FastAPI for the excellent web framework
-- React community for frontend tools
-- Kubernetes for orchestration
-- OpenAI/Anthropic for LLM APIs
-
-## Project Status
-
-🚀 **Active Development** - Version 1.0.0
+For questions or issues, please open an issue on GitHub.
 
 ---
 
-Made with ❤️ by the Solar PV LLM AI Team
+**Note**: This pipeline is specifically designed for IEC standards but can be adapted for other technical documents with similar structure.

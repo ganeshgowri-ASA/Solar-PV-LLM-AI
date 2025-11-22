@@ -1,1 +1,1 @@
-"""Test suite for Solar PV Multi-Agent System"""
+"""Test suite for IEC PDF ingestion pipeline"""

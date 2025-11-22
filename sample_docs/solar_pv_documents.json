@@ -1,0 +1,112 @@
+[
+  {
+    "text": "IEC 61215 is an international standard for crystalline silicon terrestrial photovoltaic (PV) modules - Design qualification and type approval. It evaluates the ability of the module to withstand prolonged exposure to climatic conditions. The standard includes tests for thermal cycling, humidity freeze, damp heat, UV exposure, and mechanical load testing.",
+    "metadata": {
+      "id": "doc_iec_61215_overview",
+      "standards": "IEC 61215",
+      "clauses": ["MQT 01", "MQT 02", "MQT 03"],
+      "test_type": "performance",
+      "category": "module_qualification",
+      "source": "IEC Standard Documentation"
+    }
+  },
+  {
+    "text": "The thermal cycling test (MQT 11) in IEC 61215 subjects PV modules to 200 thermal cycles between -40°C and +85°C to assess the ability of the module to withstand thermal mismatch, fatigue and other stresses caused by repeated changes of temperature. The test duration is typically several weeks.",
+    "metadata": {
+      "id": "doc_thermal_cycling_mqt11",
+      "standards": "IEC 61215",
+      "clauses": ["MQT 11"],
+      "test_type": "reliability",
+      "category": "thermal_testing",
+      "source": "IEC 61215 Test Procedures"
+    }
+  },
+  {
+    "text": "Damp heat testing (MQT 12) requires modules to endure 1000 hours at 85°C and 85% relative humidity. This test evaluates the module's resistance to moisture ingress and corrosion over long-term operation in humid climates. It is one of the most critical tests for ensuring module reliability in tropical environments.",
+    "metadata": {
+      "id": "doc_damp_heat_mqt12",
+      "standards": "IEC 61215",
+      "clauses": ["MQT 12"],
+      "test_type": "reliability",
+      "category": "environmental_testing",
+      "source": "IEC 61215 Test Procedures"
+    }
+  },
+  {
+    "text": "IEC 61730 covers photovoltaic module safety qualification - Requirements for construction. Part 1 addresses requirements for construction, and Part 2 addresses requirements for testing. The standard ensures that PV modules are designed and manufactured to minimize the risk of electric shock, fire, and personal injury.",
+    "metadata": {
+      "id": "doc_iec_61730_overview",
+      "standards": "IEC 61730",
+      "clauses": ["MST 01", "MST 02"],
+      "test_type": "safety",
+      "category": "safety_qualification",
+      "source": "IEC Standard Documentation"
+    }
+  },
+  {
+    "text": "The mechanical load test (MQT 16) applies static and dynamic loads to the module surface to simulate wind, snow, and ice loads. Modules must withstand loads of 2400 Pa compression and 1000 Pa tension without significant degradation. This ensures structural integrity during severe weather conditions.",
+    "metadata": {
+      "id": "doc_mechanical_load_mqt16",
+      "standards": "IEC 61215",
+      "clauses": ["MQT 16"],
+      "test_type": "performance",
+      "category": "mechanical_testing",
+      "source": "IEC 61215 Test Procedures"
+    }
+  },
+  {
+    "text": "UV preconditioning test (MQT 10) exposes modules to 15 kWh/m² of UV radiation with wavelengths between 280-400 nm. This test evaluates the module's resistance to UV degradation of polymeric materials such as encapsulants and backsheets. UV exposure can cause yellowing and reduced light transmission.",
+    "metadata": {
+      "id": "doc_uv_test_mqt10",
+      "standards": "IEC 61215",
+      "clauses": ["MQT 10"],
+      "test_type": "performance",
+      "category": "environmental_testing",
+      "source": "IEC 61215 Test Procedures"
+    }
+  },
+  {
+    "text": "Hot spot endurance testing (MST 09) in IEC 61730 evaluates the module's ability to withstand heating effects from reverse current in shaded cells. The test involves partially shading cells while the module is maintained at short-circuit current for specified duration to ensure no fire hazard occurs.",
+    "metadata": {
+      "id": "doc_hotspot_mst09",
+      "standards": "IEC 61730",
+      "clauses": ["MST 09"],
+      "test_type": "safety",
+      "category": "electrical_safety",
+      "source": "IEC 61730 Test Procedures"
+    }
+  },
+  {
+    "text": "PV module performance is characterized by current-voltage (I-V) curves measured under Standard Test Conditions (STC): 1000 W/m² irradiance, 25°C cell temperature, and AM 1.5 spectrum. Key parameters include maximum power (Pmax), short-circuit current (Isc), open-circuit voltage (Voc), and fill factor (FF).",
+    "metadata": {
+      "id": "doc_performance_parameters",
+      "standards": "IEC 60904",
+      "clauses": ["MST 01"],
+      "test_type": "performance",
+      "category": "electrical_characterization",
+      "source": "IEC 60904 Standard"
+    }
+  },
+  {
+    "text": "Potential Induced Degradation (PID) testing subjects modules to high voltage stress (typically 1000V) at 85°C and 85% relative humidity for 96-168 hours. PID can cause significant power loss in field installations and is particularly important for high-voltage systems.",
+    "metadata": {
+      "id": "doc_pid_testing",
+      "standards": "IEC 62804",
+      "clauses": ["PID 01"],
+      "test_type": "reliability",
+      "category": "degradation_testing",
+      "source": "IEC 62804 Standard"
+    }
+  },
+  {
+    "text": "Light-induced degradation (LID) occurs in crystalline silicon PV modules, primarily in the first hours of sunlight exposure. Boron-oxygen complexes in p-type silicon can cause initial power loss of 1-3%. Newer technologies using n-type silicon or gallium-doped p-type silicon show minimal LID.",
+    "metadata": {
+      "id": "doc_lid_overview",
+      "standards": "IEC 61215",
+      "clauses": ["MQT 19"],
+      "test_type": "performance",
+      "category": "degradation_testing",
+      "source": "Technical Research"
+    }
+  }
+]

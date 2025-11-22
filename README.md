@@ -1,420 +1,467 @@
-# Solar PV LLM AI
+# Solar-PV-LLM-AI
 
-![CI/CD Pipeline](https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI/workflows/CI/CD%20Pipeline/badge.svg)
+Repository for developing Solar PV AI LLM system with incremental training, RAG, citation, and autonomous delivery. Built for broad audiences from beginners to experts.
 
-AI-powered Solar PV analysis system with incremental training, RAG (Retrieval Augmented Generation), citation tracking, and autonomous delivery. Built to serve audiences from beginners to experts in solar photovoltaic technology.
+## 🚀 RAG Engine Core
 
-## Table of Contents
+A comprehensive **Retrieval Augmented Generation (RAG)** engine featuring:
 
-- [Overview](#overview)
+- ✅ **Hybrid Retrieval**: Combines semantic vector search + BM25 keyword search
+- ✅ **Advanced Re-ranking**: Cohere API and Cross-Encoder support
+- ✅ **HyDE (Hypothetical Document Embeddings)**: Query enhancement technique
+- ✅ **Multiple Vector Stores**: ChromaDB and FAISS backends
+- ✅ **Flexible Configuration**: Environment-based or programmatic setup
+- ✅ **Production Ready**: Comprehensive testing and examples
+
+## 📋 Table of Contents
+
 - [Features](#features)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
+- [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Environment Setup](#environment-setup)
-- [Development](#development)
+- [Architecture](#architecture)
+- [Usage Examples](#usage-examples)
+- [Configuration](#configuration)
 - [Testing](#testing)
-- [Deployment](#deployment)
-- [API Documentation](#api-documentation)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [License](#license)
+- [API Reference](#api-reference)
 
-## Overview
+## 🎯 Features
 
-Solar PV LLM AI is an intelligent system that combines large language models (LLMs) with domain-specific knowledge about solar photovoltaic systems. The platform uses:
+### Retrieval Methods
 
-- **RAG (Retrieval Augmented Generation)** for accurate, context-aware responses
-- **Multiple LLM providers** (OpenAI GPT-4, Anthropic Claude) for robust AI capabilities
-- **Vector database (Pinecone)** for efficient semantic search
-- **NREL API integration** for authoritative solar energy data
-- **Citation tracking** to ensure transparency and verifiability
+1. **Vector Similarity Search**
+   - Semantic search using sentence-transformers
+   - ChromaDB or FAISS backends
+   - Cosine similarity scoring
 
-## Features
+2. **BM25 Keyword Search**
+   - Statistical keyword ranking
+   - Fast and efficient
+   - Complementary to semantic search
 
-- 🤖 **Multi-LLM Support**: Integrate with OpenAI GPT-4 and Anthropic Claude
-- 📚 **RAG Pipeline**: Advanced retrieval-augmented generation for accurate responses
-- 🔍 **Vector Search**: Pinecone-powered semantic search for relevant information
-- 📊 **NREL Integration**: Direct access to National Renewable Energy Laboratory data
-- 🎯 **Citation Tracking**: Transparent source attribution for all generated content
-- 🔄 **Incremental Learning**: Continuous improvement through data updates
-- 🐳 **Docker Support**: Containerized deployment for consistency
-- 🚀 **CI/CD Pipeline**: Automated testing and deployment via GitHub Actions
-- 📈 **Scalable Architecture**: Microservices-based design for growth
+3. **Hybrid Retrieval**
+   - Reciprocal Rank Fusion (RRF)
+   - Weighted score fusion
+   - Configurable alpha weighting
 
-## Architecture
+### Re-ranking
 
-```
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│   Frontend  │─────▶│   Backend    │─────▶│  Pinecone   │
-│  (React)    │      │  (FastAPI)   │      │  (Vector DB)│
-└─────────────┘      └──────────────┘      └─────────────┘
-                            │
-                            ├─────▶ OpenAI GPT-4
-                            ├─────▶ Anthropic Claude
-                            ├─────▶ NREL API
-                            │
-                     ┌──────┴──────┐
-                     │             │
-                ┌────▼────┐   ┌────▼────┐
-                │PostgreSQL│   │  Redis  │
-                └──────────┘   └─────────┘
-```
+1. **Cohere Re-ranker**
+   - State-of-the-art relevance scoring
+   - API-based (requires key)
+   - Model: `rerank-english-v3.0`
 
-## Prerequisites
+2. **Cross-Encoder Re-ranker**
+   - Local model execution
+   - No API required
+   - Model: `cross-encoder/ms-marco-MiniLM-L-6-v2`
 
-### Required
+### Query Enhancement
 
-- **Docker** (20.10+) and **Docker Compose** (2.0+)
-- **Git** (2.30+)
+- **HyDE (Hypothetical Document Embeddings)**
+  - Generates hypothetical answers using LLM
+  - Bridges semantic gap between queries and documents
+  - Improves retrieval for complex queries
 
-### For Local Development (Without Docker)
+## 📦 Installation
 
-- **Python** 3.11+
-- **Node.js** 20+
-- **PostgreSQL** 16+
-- **Redis** 7+
+### Prerequisites
 
-### API Keys
+- Python 3.8+
+- pip
 
-You will need API keys from the following services:
-
-1. **OpenAI**: https://platform.openai.com/api-keys
-2. **Anthropic**: https://console.anthropic.com/
-3. **Pinecone**: https://app.pinecone.io/
-4. **NREL**: https://developer.nrel.gov/signup/
-
-## Quick Start
-
-### Using Docker (Recommended)
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI.git
-   cd Solar-PV-LLM-AI
-   ```
-
-2. **Setup environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your API keys
-   nano .env  # or use your preferred editor
-   ```
-
-3. **Start all services**
-   ```bash
-   docker-compose up -d
-   ```
-
-4. **Access the application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
-   - PgAdmin (optional): http://localhost:5050
-
-5. **View logs**
-   ```bash
-   docker-compose logs -f
-   ```
-
-6. **Stop services**
-   ```bash
-   docker-compose down
-   ```
-
-## Environment Setup
-
-### 1. Copy Environment Template
+### Basic Installation
 
 ```bash
-cp .env.example .env
-```
+# Clone the repository
+git clone https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI.git
+cd Solar-PV-LLM-AI
 
-### 2. Configure Required Variables
-
-Edit `.env` and set the following **required** variables:
-
-```bash
-# OpenAI Configuration
-OPENAI_API_KEY=sk-your-actual-openai-key-here
-
-# Anthropic Claude Configuration
-ANTHROPIC_API_KEY=sk-ant-your-actual-anthropic-key-here
-
-# Pinecone Configuration
-PINECONE_API_KEY=your-actual-pinecone-key-here
-PINECONE_ENVIRONMENT=your-pinecone-environment  # e.g., us-east1-gcp
-
-# NREL API Configuration
-NREL_API_KEY=your-actual-nrel-key-here
-
-# Database (for production - defaults work for Docker)
-POSTGRES_PASSWORD=change-this-to-secure-password
-REDIS_PASSWORD=change-this-to-secure-password
-
-# Security
-JWT_SECRET=generate-a-random-secure-secret-here
-```
-
-### 3. Optional Configuration
-
-See [ENVIRONMENT.md](./docs/ENVIRONMENT.md) for complete documentation on all environment variables.
-
-## Development
-
-### Backend Development
-
-#### Using Docker
-```bash
-# Backend runs with hot-reload enabled
-docker-compose up backend
-```
-
-#### Without Docker
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Install dependencies
 pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
 ```
 
-### Frontend Development
+### Optional Dependencies
 
-#### Using Docker
 ```bash
-# Frontend runs with Vite HMR enabled
-docker-compose up frontend
+# For GPU acceleration (FAISS)
+pip install faiss-gpu
+
+# For development
+pip install -r requirements.txt
+pip install pytest pytest-cov black flake8
 ```
 
-#### Without Docker
-```bash
-cd frontend
-npm install
-npm run dev
+## 🚀 Quick Start
+
+### Basic Usage
+
+```python
+from src.rag_engine.pipeline.rag_pipeline import RAGPipeline
+from src.rag_engine.utils.data_models import Document
+
+# Initialize pipeline
+pipeline = RAGPipeline()
+
+# Add documents
+documents = [
+    Document(
+        id="doc1",
+        content="Solar panels convert sunlight into electricity using photovoltaic cells.",
+        metadata={"source": "solar_guide.pdf", "page": 1}
+    ),
+    Document(
+        id="doc2",
+        content="Solar panel efficiency typically ranges from 15% to 22%.",
+        metadata={"source": "efficiency.pdf", "page": 3}
+    ),
+]
+pipeline.add_documents(documents)
+
+# Query the system
+result = pipeline.query(
+    query="How efficient are solar panels?",
+    top_k=3,
+    retrieval_method="hybrid",
+    use_reranker=True
+)
+
+# Access results
+print(f"Query: {result['query']}")
+print(f"Context: {result['formatted_context']}")
+for doc in result['retrieved_docs']:
+    print(f"  - {doc.document.content[:100]}... (score: {doc.score:.4f})")
 ```
 
-### Code Quality
+### Run Examples
 
-#### Backend
 ```bash
-cd backend
+# Basic usage example
+python examples/basic_usage.py
 
-# Format code
-black .
+# Advanced features (HyDE, re-ranking, comparisons)
+python examples/advanced_usage.py
+```
 
-# Lint
-flake8 .
+## 🏗️ Architecture
 
-# Type checking
-mypy app/
+```
+RAG Pipeline
+├── Retrieval
+│   ├── Vector Retriever (ChromaDB/FAISS)
+│   ├── BM25 Retriever
+│   └── Hybrid Retriever (RRF/Weighted Fusion)
+├── Re-ranking
+│   ├── Cohere Re-ranker
+│   └── Cross-Encoder Re-ranker
+├── Enhancement
+│   └── HyDE (Hypothetical Document Embeddings)
+└── Context Creation
+    └── Formatted RAG Context
+```
 
-# Run tests
+For detailed architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## 💡 Usage Examples
+
+### Example 1: Vector-Only Retrieval
+
+```python
+from src.rag_engine.pipeline.rag_pipeline import RAGPipeline
+
+pipeline = RAGPipeline()
+pipeline.add_documents(documents)
+
+results = pipeline.retrieve(
+    query="How do solar panels work?",
+    top_k=5,
+    retrieval_method="vector",
+    use_reranker=False
+)
+```
+
+### Example 2: Hybrid Retrieval with Re-ranking
+
+```python
+from src.rag_engine.reranking.reranker import CrossEncoderReranker
+
+# Initialize with cross-encoder reranker
+reranker = CrossEncoderReranker(
+    model_name="cross-encoder/ms-marco-MiniLM-L-6-v2"
+)
+pipeline = RAGPipeline(reranker=reranker)
+
+results = pipeline.retrieve(
+    query="What is the best solar panel efficiency?",
+    top_k=10,
+    retrieval_method="hybrid",
+    use_reranker=True  # Apply cross-encoder re-ranking
+)
+```
+
+### Example 3: Using HyDE
+
+```python
+from src.rag_engine.embeddings.hyde import HyDE
+import os
+
+# Initialize HyDE
+hyde = HyDE(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    model="gpt-3.5-turbo"
+)
+pipeline = RAGPipeline(hyde=hyde)
+
+results = pipeline.retrieve(
+    query="solar energy benefits",
+    top_k=5,
+    retrieval_method="hybrid",
+    use_hyde=True  # Apply HyDE query enhancement
+)
+```
+
+### Example 4: Creating RAG Context
+
+```python
+# Get formatted context for LLM
+context = pipeline.create_context(
+    query="How to install solar panels?",
+    top_k=3,
+    retrieval_method="hybrid",
+    use_reranker=True
+)
+
+# Use context with LLM
+prompt = f"""
+Answer the question based on the context below.
+
+Context:
+{context.context_text}
+
+Question: {context.query}
+
+Answer:
+"""
+```
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Create a `.env` file (see `.env.example`):
+
+```env
+# API Keys
+OPENAI_API_KEY=your_openai_api_key
+COHERE_API_KEY=your_cohere_api_key
+
+# RAG Configuration
+TOP_K_RETRIEVAL=10
+TOP_K_RERANK=5
+HYBRID_ALPHA=0.5
+USE_HYDE=false
+
+# Vector Store
+VECTOR_STORE_TYPE=chromadb
+VECTOR_STORE_PATH=./data/vector_store
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+
+# Re-ranker
+RERANKER_TYPE=cross-encoder
+CROSS_ENCODER_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2
+```
+
+### Programmatic Configuration
+
+```python
+from config.rag_config import RAGConfig, RetrievalConfig, VectorStoreConfig
+
+config = RAGConfig(
+    retrieval=RetrievalConfig(
+        top_k=10,
+        top_k_rerank=5,
+        hybrid_alpha=0.5,
+        use_hyde=False
+    ),
+    vector_store=VectorStoreConfig(
+        store_type="chromadb",
+        store_path="./data/vector_store",
+        embedding_model="sentence-transformers/all-MiniLM-L6-v2"
+    )
+)
+
+pipeline = RAGPipeline(config=config)
+```
+
+## 🧪 Testing
+
+### Run All Tests
+
+```bash
 pytest
 ```
 
-#### Frontend
+### Run Specific Test Suites
+
 ```bash
-cd frontend
+# Unit tests only
+pytest tests/unit/
 
-# Lint
-npm run lint
+# Integration tests only
+pytest tests/integration/
 
-# Format
-npm run format
+# Specific test file
+pytest tests/unit/test_bm25_retriever.py
 
-# Run tests
-npm run test
+# With coverage
+pytest --cov=src/rag_engine --cov-report=html
 ```
 
-## Testing
+### Test Coverage
 
-### Run All Tests
-```bash
-# Backend tests
-docker-compose run backend pytest
+Current test coverage includes:
+- ✅ Data models (Document, RetrievalResult, RAGContext)
+- ✅ BM25 retriever
+- ✅ Vector retriever (ChromaDB/FAISS)
+- ✅ Hybrid retriever (RRF and weighted fusion)
+- ✅ Re-ranking (Cohere and Cross-Encoder)
+- ✅ Full RAG pipeline integration
 
-# Frontend tests
-docker-compose run frontend npm run test
+## 📚 API Reference
 
-# Integration tests
-docker-compose up -d
-# Run your integration tests here
-docker-compose down
+### RAGPipeline
+
+Main class for RAG operations.
+
+```python
+pipeline = RAGPipeline(
+    config=None,              # Optional RAGConfig
+    vector_retriever=None,    # Optional pre-initialized retriever
+    bm25_retriever=None,      # Optional pre-initialized retriever
+    reranker=None,            # Optional pre-initialized reranker
+    hyde=None                 # Optional pre-initialized HyDE
+)
 ```
 
-### Coverage Reports
-```bash
-# Backend coverage
-cd backend
-pytest --cov=app --cov-report=html
-open htmlcov/index.html
+**Key Methods**:
 
-# Frontend coverage
-cd frontend
-npm run test:coverage
-open coverage/index.html
+- `add_documents(documents: List[Document])`: Add documents to the system
+- `retrieve(query, top_k, retrieval_method, use_hyde, use_reranker)`: Retrieve documents
+- `create_context(query, ...)`: Create formatted RAG context
+- `query(query, ...)`: Complete RAG query pipeline
+- `get_stats()`: Get pipeline statistics
+
+### Document
+
+```python
+Document(
+    id: str,                    # Unique identifier
+    content: str,               # Document text
+    metadata: Dict[str, Any],   # Optional metadata
+    embedding: List[float]      # Optional pre-computed embedding
+)
 ```
 
-## Deployment
+### RetrievalResult
 
-### Production Deployment
-
-1. **Build production images**
-   ```bash
-   docker-compose -f docker-compose.prod.yml build
-   ```
-
-2. **Deploy to your infrastructure**
-   - AWS ECS/EKS
-   - Google Cloud Run
-   - Azure Container Instances
-   - Kubernetes cluster
-
-3. **Set production environment variables**
-   - Never commit production `.env` files
-   - Use secrets management (AWS Secrets Manager, HashiCorp Vault, etc.)
-
-### CI/CD Pipeline
-
-The project includes GitHub Actions workflows that automatically:
-
-- ✅ Lint code (Python with Black/Flake8, JavaScript with ESLint)
-- ✅ Run tests (pytest for backend, Vitest for frontend)
-- ✅ Build Docker images
-- ✅ Run security scans (Trivy)
-- ✅ Deploy to staging/production (configure in workflow)
-
-## API Documentation
-
-Once the backend is running, visit:
-
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-
-### Key Endpoints
-
-```
-GET  /               - Health check
-GET  /health         - Detailed health status
-POST /api/query      - Submit a query to the LLM
-GET  /api/sources    - Retrieve data sources
-POST /api/feedback   - Submit user feedback
+```python
+RetrievalResult(
+    document: Document,        # Retrieved document
+    score: float,             # Relevance score
+    rank: int,                # Rank position
+    retrieval_method: str     # Method used
+)
 ```
 
-## Project Structure
+### RAGContext
 
-```
-Solar-PV-LLM-AI/
-├── backend/                 # FastAPI backend application
-│   ├── app/
-│   │   ├── main.py         # Application entry point
-│   │   ├── config.py       # Configuration management
-│   │   ├── models/         # Database models
-│   │   ├── routes/         # API endpoints
-│   │   ├── services/       # Business logic
-│   │   └── utils/          # Utility functions
-│   ├── tests/              # Backend tests
-│   ├── Dockerfile          # Backend container definition
-│   └── requirements.txt    # Python dependencies
-│
-├── frontend/               # React frontend application
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── services/       # API client services
-│   │   └── utils/          # Utility functions
-│   ├── public/             # Static assets
-│   ├── Dockerfile          # Frontend container definition
-│   ├── nginx.conf          # Nginx configuration
-│   └── package.json        # Node dependencies
-│
-├── data/                   # Data storage
-│   ├── raw/               # Raw data files
-│   ├── processed/         # Processed datasets
-│   └── models/            # Trained model artifacts
-│
-├── scripts/               # Utility scripts
-│   ├── setup.sh          # Environment setup
-│   ├── seed_data.py      # Database seeding
-│   └── backup.sh         # Backup utilities
-│
-├── tests/                 # Integration tests
-│   ├── integration/      # End-to-end tests
-│   └── unit/            # Unit tests
-│
-├── .github/
-│   └── workflows/        # GitHub Actions CI/CD
-│       └── ci-cd.yml    # Main pipeline
-│
-├── docker-compose.yml    # Development environment
-├── .env.example         # Environment template
-├── .gitignore          # Git ignore rules
-└── README.md           # This file
+```python
+RAGContext(
+    query: str,                        # Original query
+    retrieved_docs: List[RetrievalResult],  # Retrieved documents
+    context_text: str,                 # Formatted context
+    metadata: Dict[str, Any],          # Context metadata
+    timestamp: datetime                # Creation time
+)
 ```
 
-## Contributing
+## 🔧 Advanced Features
 
-We welcome contributions! Please follow these steps:
+### Reciprocal Rank Fusion (RRF)
+
+Combines rankings from multiple retrieval methods:
+
+```python
+pipeline.hybrid_retriever.retrieve(
+    query="...",
+    top_k=10,
+    fusion_method="rrf"  # Reciprocal Rank Fusion
+)
+```
+
+### Weighted Fusion
+
+Combines normalized scores:
+
+```python
+pipeline.hybrid_retriever.retrieve(
+    query="...",
+    top_k=10,
+    fusion_method="weighted"  # Weighted score fusion
+)
+```
+
+### Custom Alpha Weighting
+
+Control semantic vs keyword balance:
+
+```python
+# Favor semantic search (alpha=0.7)
+pipeline.hybrid_retriever.alpha = 0.7
+
+# Favor keyword search (alpha=0.3)
+pipeline.hybrid_retriever.alpha = 0.3
+
+# Equal balance (alpha=0.5)
+pipeline.hybrid_retriever.alpha = 0.5
+```
+
+## 📊 Performance
+
+| Configuration | Speed | Quality | Cost |
+|--------------|-------|---------|------|
+| Vector only | ⚡⚡⚡ | ⭐⭐⭐ | Free |
+| BM25 only | ⚡⚡⚡ | ⭐⭐⭐ | Free |
+| Hybrid | ⚡⚡⚡ | ⭐⭐⭐⭐ | Free |
+| + Cross-Encoder | ⚡⚡ | ⭐⭐⭐⭐⭐ | Free |
+| + Cohere | ⚡⚡ | ⭐⭐⭐⭐⭐ | $ |
+| + HyDE | ⚡ | ⭐⭐⭐⭐⭐ | $ |
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Add tests for new features
+4. Ensure all tests pass
+5. Submit a pull request
 
-### Development Guidelines
+## 📄 License
 
-- Follow PEP 8 for Python code
-- Use ESLint configuration for JavaScript/TypeScript
-- Write tests for new features
-- Update documentation as needed
-- Ensure CI/CD pipeline passes
+This project is licensed under the MIT License.
 
-## Troubleshooting
+## 🙏 Acknowledgments
 
-### Common Issues
+- **Sentence Transformers** for embedding models
+- **ChromaDB** and **FAISS** for vector storage
+- **Cohere** for re-ranking API
+- **rank-bm25** for BM25 implementation
+- **HyDE paper**: "Precise Zero-Shot Dense Retrieval without Relevance Labels" (Gao et al., 2022)
 
-1. **Docker containers won't start**
-   ```bash
-   docker-compose down -v  # Remove all containers and volumes
-   docker-compose up --build  # Rebuild and start
-   ```
-
-2. **Port already in use**
-   ```bash
-   # Change ports in .env file
-   APP_PORT=8001
-   FRONTEND_PORT=3001
-   ```
-
-3. **API keys not working**
-   - Verify keys are correctly set in `.env`
-   - Restart containers: `docker-compose restart`
-   - Check logs: `docker-compose logs backend`
-
-4. **Database connection issues**
-   ```bash
-   # Reset database
-   docker-compose down postgres -v
-   docker-compose up -d postgres
-   ```
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- OpenAI for GPT models
-- Anthropic for Claude models
-- NREL for solar energy data
-- Pinecone for vector database capabilities
-
-## Contact
+## 📞 Contact
 
 For questions or support, please open an issue on GitHub.
 
 ---
 
-**Built with ❤️ for the solar energy community**
+**Built for Solar PV AI LLM System** | Incremental Training | RAG | Citation | Autonomous Delivery

@@ -1,13 +1,3 @@
-# ============================================
-# Solar PV LLM AI - Git Ignore Rules
-# ============================================
-
-# Environment Variables
-.env
-.env.local
-.env.*.local
-*.env
-
 # Python
 __pycache__/
 *.py[cod]
@@ -26,116 +16,65 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
-*.manifest
-*.spec
-pip-log.txt
-pip-delete-this-directory.txt
 
-# Virtual Environments
+# Virtual environments
 venv/
-ENV/
 env/
-.venv
-.ENV
-.env
+ENV/
+env.bak/
+venv.bak/
 
-# IDEs and Editors
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
-*.sublime-project
-*.sublime-workspace
-.project
-.pydevproject
-.settings/
 
-# Jupyter Notebook
-.ipynb_checkpoints
-*.ipynb
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # Testing
 .pytest_cache/
 .coverage
-.coverage.*
 htmlcov/
 .tox/
-.nox/
-coverage.xml
-*.cover
 .hypothesis/
 
-# MyPy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Node.js / Frontend
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-.npm
-.yarn-integrity
-.next/
-out/
-dist/
-build/
-
-# Database
+# Data and vector stores
+data/
 *.db
 *.sqlite
-*.sqlite3
+*.faiss
+*.pkl
+*.npy
 
 # Logs
 *.log
 logs/
-*.log.*
 
-# Docker
-.docker/
-*.dockerignore
+# Jupyter Notebook
+.ipynb_checkpoints
 
-# Data Files (adjust based on your needs)
-data/raw/*
-data/processed/*
-data/models/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-!data/models/.gitkeep
+# Model files
+models/
+*.pt
+*.pth
+*.bin
+*.safetensors
 
-# Temporary Files
-*.tmp
-*.temp
+# Documentation builds
+docs/_build/
+site/
+
+# Temporary files
 tmp/
 temp/
-
-# OS Files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Compiled Files
-*.pyc
-*.pyo
-*.pyd
-
-# SSL Certificates
-*.pem
-*.key
-*.crt
-*.cert
-
-# Secrets and Credentials
-secrets/
-credentials/
-*.secret
+*.tmp

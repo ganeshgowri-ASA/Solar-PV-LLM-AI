@@ -1,3 +1,15 @@
+# =============================================================================
+# Solar PV LLM AI Platform - Git Ignore Configuration
+# =============================================================================
+
+# Environment variables (NEVER commit actual .env files!)
+.env
+.env.local
+.env.*.local
+
+# Keep .env.example for reference
+!.env.example
+
 # Python
 __pycache__/
 *.py[cod]
@@ -27,7 +39,7 @@ MANIFEST
 venv/
 env/
 ENV/
-.venv
+.venv/
 
 # IDE
 .vscode/
@@ -35,13 +47,13 @@ ENV/
 *.swp
 *.swo
 *~
-.DS_Store
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
+.nox/
 
 # Data files
 *.pdf
@@ -57,12 +69,8 @@ data/output/*
 logs/
 *.log
 
-# Environment variables
-.env
-.env.local
-
 # Jupyter Notebooks
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # Model files
 models/
@@ -75,3 +83,23 @@ models/
 tmp/
 temp/
 *.tmp
+
+# Database
+*.db
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node (if frontend)
+node_modules/
+
+# Secrets and credentials
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Docker
+.docker/

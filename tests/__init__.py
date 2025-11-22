@@ -1,1 +1,1 @@
-"""Test package for Solar PV LLM AI."""
+"""Tests package"""

@@ -1,167 +1,271 @@
-"""Integration tests for the API."""
-
+"""
+Integration tests for API endpoints.
+"""
 import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
-
-from src.orchestrator.api import create_app
-from src.orchestrator.models import QueryRequest, QueryType, LLMProvider
+from unittest.mock import patch
+from fastapi import status
 
 
-@pytest.fixture
-def client():
-    """Create test client."""
-    app = create_app()
-    return TestClient(app)
+class TestHealthCheckEndpoint:
+    """Test health check endpoint."""
 
+    def test_health_check(self, test_client):
+        """Test health check endpoint returns healthy status."""
+        response = test_client.get("/health")
 
-@pytest.fixture
-def mock_orchestrator_response():
-    """Mock orchestrator response."""
-    from src.orchestrator.models import OrchestratorResponse, LLMResponse
-
-    return OrchestratorResponse(
-        response="This is a test response about solar panels.",
-        primary_llm=LLMProvider.GPT,
-        query_type=QueryType.STANDARD_INTERPRETATION,
-        classification_confidence=0.85,
-        responses=[
-            LLMResponse(
-                provider=LLMProvider.GPT,
-                content="Test response",
-                model="gpt-4o",
-                tokens_used=100,
-            )
-        ],
-        is_hybrid=False,
-        fallback_used=False,
-        total_latency_ms=500.0,
-    )
-
-
-class TestAPI:
-    """Test suite for REST API."""
-
-    def test_root_endpoint(self, client):
-        """Test root endpoint."""
-        response = client.get("/")
-
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["name"] == "Solar PV Multi-LLM Orchestrator"
-        assert data["status"] == "operational"
-        assert "endpoints" in data
+        assert data["status"] == "healthy"
+        assert "version" in data
+        assert "timestamp" in data
+        assert "nrel_api_available" in data
 
-    def test_health_check(self, client):
-        """Test health check endpoint."""
-        response = client.get("/api/v1/health")
+    def test_root_endpoint(self, test_client):
+        """Test root endpoint returns API info."""
+        response = test_client.get("/")
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert "status" in data
-        assert "components" in data
+        assert "name" in data
+        assert "version" in data
+        assert "docs" in data
 
-    def test_list_models(self, client):
-        """Test models listing endpoint."""
-        response = client.get("/api/v1/models")
 
-        assert response.status_code == 200
-        data = response.json()
-        assert "models" in data
-        assert "gpt" in data["models"]
-        assert "claude" in data["models"]
-        assert "routing" in data
+class TestEnergyYieldEndpoint:
+    """Test Energy Yield Calculator API endpoint."""
 
-    def test_list_query_types(self, client):
-        """Test query types listing endpoint."""
-        response = client.get("/api/v1/query-types")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "query_types" in data
-        assert "calculation" in data["query_types"]
-        assert "image_analysis" in data["query_types"]
-
-    @patch("src.orchestrator.service.OrchestratorService.process_query")
-    def test_process_query_success(
-        self, mock_process, client, mock_orchestrator_response
+    @patch('backend.services.nrel_client.nrel_client.get_pvwatts_data')
+    def test_energy_yield_calculation(
+        self,
+        mock_pvwatts,
+        test_client,
+        sample_location,
+        sample_system_parameters,
+        mock_pvwatts_response
     ):
-        """Test successful query processing."""
-        mock_process.return_value = mock_orchestrator_response
+        """Test energy yield calculation endpoint."""
+        mock_pvwatts.return_value = mock_pvwatts_response
 
-        request_data = {
-            "query": "What is a solar inverter?",
-            "max_tokens": 2000,
-            "temperature": 0.7,
+        payload = {
+            "location": sample_location,
+            "system": sample_system_parameters
         }
 
-        response = client.post("/api/v1/query", json=request_data)
+        response = test_client.post(
+            "/api/v1/calculators/energy-yield",
+            json=payload
+        )
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert "response" in data
-        assert "primary_llm" in data
-        assert "query_type" in data
 
-    def test_process_query_empty(self, client):
-        """Test query with empty input."""
-        request_data = {"query": ""}
+        # Check response structure
+        assert "annual_energy_kwh" in data
+        assert "monthly_energy" in data
+        assert "capacity_factor" in data
+        assert "specific_yield" in data
+        assert "performance_ratio" in data
+        assert "uncertainty" in data
+        assert "metadata" in data
 
-        response = client.post("/api/v1/query", json=request_data)
+        # Check monthly energy is array of 12
+        assert len(data["monthly_energy"]) == 12
 
-        assert response.status_code == 400
-        assert "empty" in response.json()["detail"].lower()
+        # Check uncertainty structure
+        assert "standard_error" in data["uncertainty"]
+        assert "confidence_interval_lower" in data["uncertainty"]
+        assert "confidence_interval_upper" in data["uncertainty"]
 
-    def test_process_query_missing_field(self, client):
-        """Test query with missing required field."""
-        request_data = {}
-
-        response = client.post("/api/v1/query", json=request_data)
-
-        assert response.status_code == 422  # Validation error
-
-    def test_openapi_docs_available(self, client):
-        """Test that OpenAPI docs are accessible."""
-        response = client.get("/docs")
-        assert response.status_code == 200
-
-        response = client.get("/redoc")
-        assert response.status_code == 200
-
-
-class TestAPIQueryProcessing:
-    """Test suite for query processing through API."""
-
-    @patch("src.orchestrator.service.OrchestratorService.process_query")
-    def test_calculation_query(self, mock_process, client, mock_orchestrator_response):
-        """Test processing a calculation query."""
-        mock_orchestrator_response.query_type = QueryType.CALCULATION
-        mock_process.return_value = mock_orchestrator_response
-
-        request_data = {
-            "query": "Calculate energy yield for 10kW system",
-            "query_type": "calculation",
+    def test_energy_yield_invalid_location(self, test_client, sample_system_parameters):
+        """Test energy yield with invalid location."""
+        payload = {
+            "location": {
+                "latitude": 100,  # Invalid (> 90)
+                "longitude": -105
+            },
+            "system": sample_system_parameters
         }
 
-        response = client.post("/api/v1/query", json=request_data)
+        response = test_client.post(
+            "/api/v1/calculators/energy-yield",
+            json=payload
+        )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["query_type"] == "calculation"
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    @patch("src.orchestrator.service.OrchestratorService.process_query")
-    def test_preferred_llm(self, mock_process, client, mock_orchestrator_response):
-        """Test query with preferred LLM."""
-        mock_orchestrator_response.primary_llm = LLMProvider.CLAUDE
-        mock_process.return_value = mock_orchestrator_response
-
-        request_data = {
-            "query": "Explain solar panels",
-            "preferred_llm": "claude",
+    def test_energy_yield_missing_required_field(self, test_client, sample_location):
+        """Test energy yield with missing required field."""
+        payload = {
+            "location": sample_location
+            # Missing 'system' field
         }
 
-        response = client.post("/api/v1/query", json=request_data)
+        response = test_client.post(
+            "/api/v1/calculators/energy-yield",
+            json=payload
+        )
 
-        assert response.status_code == 200
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class TestDegradationRateEndpoint:
+    """Test Degradation Rate Calculator API endpoint."""
+
+    def test_degradation_rate_calculation(
+        self,
+        test_client,
+        sample_degradation_data
+    ):
+        """Test degradation rate calculation endpoint."""
+        payload = {
+            "data_points": sample_degradation_data,
+            "system_capacity_kw": 4.0,
+            "use_robust_regression": True
+        }
+
+        response = test_client.post(
+            "/api/v1/calculators/degradation-rate",
+            json=payload
+        )
+
+        assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["primary_llm"] == "claude"
+
+        # Check response structure
+        assert "degradation_rate_per_year" in data
+        assert "degradation_rate_percent" in data
+        assert "expected_lifetime_years" in data
+        assert "uncertainty" in data
+        assert "data_quality_score" in data
+        assert "outliers_detected" in data
+        assert "analysis_period_years" in data
+        assert "projected_output_year_25" in data
+
+    def test_degradation_rate_insufficient_data(self, test_client):
+        """Test degradation rate with insufficient data points."""
+        payload = {
+            "data_points": [
+                {
+                    "timestamp": "2020-01-01T00:00:00",
+                    "normalized_output": 1.0
+                },
+                {
+                    "timestamp": "2020-02-01T00:00:00",
+                    "normalized_output": 0.99
+                }
+            ],  # Only 2 points (need 12)
+            "system_capacity_kw": 4.0
+        }
+
+        response = test_client.post(
+            "/api/v1/calculators/degradation-rate",
+            json=payload
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_degradation_rate_invalid_normalized_output(self, test_client):
+        """Test degradation rate with invalid normalized output."""
+        payload = {
+            "data_points": [
+                {
+                    "timestamp": f"2020-{i+1:02d}-01T00:00:00",
+                    "normalized_output": 2.0  # Invalid (> 1.5)
+                }
+                for i in range(12)
+            ],
+            "system_capacity_kw": 4.0
+        }
+
+        response = test_client.post(
+            "/api/v1/calculators/degradation-rate",
+            json=payload
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class TestSpectralMismatchEndpoint:
+    """Test Spectral Mismatch Calculator API endpoint."""
+
+    def test_spectral_mismatch_calculation(
+        self,
+        test_client,
+        sample_spectral_data
+    ):
+        """Test spectral mismatch calculation endpoint."""
+        response = test_client.post(
+            "/api/v1/calculators/spectral-mismatch",
+            json=sample_spectral_data
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        # Check response structure
+        assert "mismatch_factor" in data
+        assert "corrected_irradiance" in data
+        assert "uncorrected_irradiance" in data
+        assert "correction_percentage" in data
+        assert "uncertainty" in data
+        assert "iec_compliant" in data
+        assert "wavelength_range" in data
+        assert "integration_method" in data
+
+    def test_spectral_mismatch_insufficient_points(self, test_client):
+        """Test spectral mismatch with too few data points."""
+        payload = {
+            "wavelengths": [400, 500, 600],
+            "incident_spectrum": [1.0, 1.5, 1.0],
+            "reference_spectrum": [1.0, 1.5, 1.0],
+            "cell_spectral_response": [0.5, 0.8, 0.5]
+        }
+
+        response = test_client.post(
+            "/api/v1/calculators/spectral-mismatch",
+            json=payload
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_spectral_mismatch_mismatched_lengths(self, test_client):
+        """Test spectral mismatch with mismatched array lengths."""
+        payload = {
+            "wavelengths": list(range(300, 400, 10)),  # 10 points
+            "incident_spectrum": [1.0] * 10,
+            "reference_spectrum": [1.0] * 10,
+            "cell_spectral_response": [0.5] * 5  # Wrong length!
+        }
+
+        response = test_client.post(
+            "/api/v1/calculators/spectral-mismatch",
+            json=payload
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+class TestAPIDocumentation:
+    """Test API documentation endpoints."""
+
+    def test_openapi_schema(self, test_client):
+        """Test OpenAPI schema is accessible."""
+        response = test_client.get("/openapi.json")
+
+        assert response.status_code == status.HTTP_200_OK
+        schema = response.json()
+        assert "openapi" in schema
+        assert "info" in schema
+        assert "paths" in schema
+
+    def test_docs_endpoint(self, test_client):
+        """Test Swagger UI docs endpoint."""
+        response = test_client.get("/docs")
+
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_redoc_endpoint(self, test_client):
+        """Test ReDoc endpoint."""
+        response = test_client.get("/redoc")
+
+        assert response.status_code == status.HTTP_200_OK

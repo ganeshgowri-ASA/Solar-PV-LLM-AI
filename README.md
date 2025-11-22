@@ -1,292 +1,401 @@
 # Solar PV LLM AI System
 
-Repository for developing a comprehensive Solar PV AI LLM system with incremental training, RAG (Retrieval-Augmented Generation), citation management, and autonomous delivery. Built for broad audiences from beginners to experts.
+> **Photovoltaic domain calculators with NREL API integration, uncertainty quantification, and standards-compliant calculations**
 
-## Overview
+A comprehensive REST API system for solar photovoltaic calculations, featuring energy yield estimation, degradation analysis, and spectral mismatch correction. Built with FastAPI and integrated with NREL solar resource data.
 
-The Solar PV LLM AI System is designed to provide accurate, citation-backed answers to questions about solar photovoltaic systems, standards, and best practices. The system combines:
-
-- **RAG Architecture** - Retrieval-augmented generation for accurate, source-based responses
-- **Citation Management** - Automatic extraction, tracking, and formatting of citations
-- **Multi-Standard Support** - IEC, IEEE, ISO, ASTM, and other industry standards
-- **Flexible Citation Styles** - IEC, IEEE, and APA formatting
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green.svg)](https://fastapi.tiangolo.com/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Features
 
-### Current Release (v0.1.0)
+### 🌞 PV Domain Calculators
 
-#### ✅ Citation Management System
-- **Citation Tracker** - Sequential citation numbering with persistence options
-- **Metadata Extraction** - Automatic extraction of standard IDs, clause references, years, and titles
-- **Inline Citation Injection** - Smart injection of citation markers into LLM responses
-- **Multi-Format Support** - IEC, IEEE, and APA citation styles
-- **Reference Validation** - Validate citations and check for consistency
-- **Comprehensive Testing** - Full unit test coverage and QA verification
+1. **Energy Yield Calculator**
+   - Wraps NREL PVWatts v6 API for annual and monthly energy production estimates
+   - Location-based solar resource data (TMY weather files)
+   - System performance metrics: capacity factor, specific yield, performance ratio
+   - Comprehensive uncertainty quantification with 95% confidence intervals
 
-### Supported Standards
+2. **Degradation Rate Calculator**
+   - Statistical linear regression analysis of PV system performance over time
+   - Robust regression with automatic outlier detection (Huber regression)
+   - Calculates annual degradation rate with confidence intervals
+   - Projects system lifetime and performance at year 25
+   - Data quality scoring
 
-The system recognizes and extracts citations from:
-- **IEC** (International Electrotechnical Commission) - e.g., IEC 61215, IEC 61730
-- **ISO** (International Organization for Standardization) - e.g., ISO 9001
-- **IEEE** (Institute of Electrical and Electronics Engineers) - e.g., IEEE 1547
-- **ASTM** (American Society for Testing and Materials) - e.g., ASTM E1036
-- **EN** (European Standards) - e.g., EN 50530
-- **UL** (Underwriters Laboratories) - e.g., UL 1741
+3. **Spectral Mismatch Correction Calculator**
+   - IEC 60904-7 compliant spectral mismatch factor calculation
+   - Corrects for differences between test and reference spectral conditions
+   - Supports custom spectral irradiance and cell response data
+   - Trapezoidal integration for accurate spectral calculations
+   - IEC compliance verification
+
+### 🎯 Key Capabilities
+
+- **Standards Compliant**: IEC 60904-7 for spectral mismatch calculations
+- **Uncertainty Quantification**: All calculators include statistical uncertainty analysis
+- **Robust Methods**: Outlier detection and handling in degradation analysis
+- **NREL Integration**: Direct integration with NREL solar resource APIs
+- **Modular Design**: Each calculator can be used independently or combined
+- **Interactive Documentation**: Auto-generated OpenAPI/Swagger documentation
+- **Comprehensive Testing**: Unit and integration tests with >90% coverage
 
 ## Quick Start
 
+### Prerequisites
+
+- Python 3.10 or higher
+- NREL API key (free from [https://developer.nrel.gov/signup/](https://developer.nrel.gov/signup/))
+
 ### Installation
 
+1. **Clone the repository**
+
 ```bash
-# Clone the repository
 git clone https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI.git
 cd Solar-PV-LLM-AI
+```
 
-# Create virtual environment
+2. **Create and activate virtual environment**
+
+```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install in development mode
-pip install -e .
 ```
 
-### Basic Usage
+3. **Install dependencies**
+
+```bash
+pip install -r requirements.txt
+```
+
+4. **Configure environment**
+
+```bash
+cp .env.example .env
+# Edit .env and add your NREL API key
+```
+
+5. **Run the server**
+
+```bash
+python backend/main.py
+```
+
+The API will be available at `http://localhost:8000`
+
+### Quick Test
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# Interactive documentation
+open http://localhost:8000/docs
+```
+
+## API Usage
+
+### Energy Yield Calculation
 
 ```python
-from citations import CitationManager, RetrievedDocument
+import requests
 
-# Initialize citation manager
-manager = CitationManager()
-
-# Sample LLM response
-llm_response = "Solar modules must meet IEC 61215 testing standards."
-
-# Sample retrieved documents from RAG
-retrieved_docs = [
-    RetrievedDocument(
-        content="IEC 61215 defines testing requirements for PV modules.",
-        metadata={
-            'standard_id': 'IEC 61215',
-            'title': 'Terrestrial PV modules - Design qualification',
-            'year': '2021',
-            'clause': 'Clause 5.2'
+response = requests.post(
+    "http://localhost:8000/api/v1/calculators/energy-yield",
+    json={
+        "location": {
+            "latitude": 40.0150,
+            "longitude": -105.2705
         },
-        doc_id="doc_1",
-        score=0.9
-    )
-]
-
-# Process response with citations
-processed_response, citations = manager.process_response(
-    llm_response,
-    retrieved_docs,
-    inject_citations=True
+        "system": {
+            "system_capacity": 4.0,
+            "module_type": 0,
+            "array_type": 0,
+            "tilt": 20,
+            "azimuth": 180,
+            "losses": 14.08
+        }
+    }
 )
 
-# Format references in IEC style
-references = manager.format_references(style='iec')
-
-print(processed_response)  # "Solar modules must meet IEC 61215[1] testing standards."
-print(references)
-# References
-# ==================================================
-# [1] IEC 61215, "Terrestrial PV modules - Design qualification", 2021, Clause 5.2.
+data = response.json()
+print(f"Annual Energy: {data['annual_energy_kwh']:.2f} kWh/year")
+print(f"Capacity Factor: {data['capacity_factor']:.1%}")
 ```
 
-## Running Tests
+### Degradation Rate Analysis
 
-### Unit Tests
+```python
+from datetime import datetime, timedelta
+import requests
+
+# Generate sample data
+start_date = datetime(2020, 1, 1)
+data_points = [
+    {
+        "timestamp": (start_date + timedelta(days=30*i)).isoformat(),
+        "normalized_output": 1.0 - (0.005 * i / 12)  # -0.5%/year degradation
+    }
+    for i in range(36)  # 3 years of monthly data
+]
+
+response = requests.post(
+    "http://localhost:8000/api/v1/calculators/degradation-rate",
+    json={
+        "data_points": data_points,
+        "system_capacity_kw": 4.0,
+        "use_robust_regression": True
+    }
+)
+
+data = response.json()
+print(f"Degradation: {data['degradation_rate_percent']:.3f}%/year")
+print(f"Lifetime (to 80%): {data['expected_lifetime_years']:.1f} years")
+```
+
+### Spectral Mismatch Correction
+
+```python
+import numpy as np
+import requests
+
+# Create sample spectral data
+wavelengths = np.linspace(300, 1200, 100)
+reference_spectrum = np.exp(-((wavelengths - 500) / 300) ** 2) * 1.5
+incident_spectrum = np.exp(-((wavelengths - 450) / 250) ** 2) * 1.5
+cell_response = np.exp(-((wavelengths - 900) / 200) ** 2) * 0.8
+
+response = requests.post(
+    "http://localhost:8000/api/v1/calculators/spectral-mismatch",
+    json={
+        "wavelengths": wavelengths.tolist(),
+        "incident_spectrum": incident_spectrum.tolist(),
+        "reference_spectrum": reference_spectrum.tolist(),
+        "cell_spectral_response": cell_response.tolist()
+    }
+)
+
+data = response.json()
+print(f"Mismatch Factor: {data['mismatch_factor']:.4f}")
+print(f"Correction: {data['correction_percentage']:+.2f}%")
+```
+
+For more examples, see [API Usage Guide](docs/API_USAGE.md)
+
+## Documentation
+
+- **[API Usage Guide](docs/API_USAGE.md)**: Detailed API usage with examples
+- **[Interactive Docs](http://localhost:8000/docs)**: Swagger UI (after starting server)
+- **[ReDoc](http://localhost:8000/redoc)**: Alternative API documentation
+
+## Testing
+
+Run the comprehensive test suite:
 
 ```bash
 # Run all tests
-pytest tests/ -v
-
-# Run citation tests only
-pytest tests/test_citations/ -v
+pytest
 
 # Run with coverage
-pytest tests/ --cov=src --cov-report=html
+pytest --cov=backend --cov-report=html
+
+# Run specific test file
+pytest tests/unit/test_energy_yield.py
+
+# Run integration tests only
+pytest tests/integration/
 ```
-
-### QA Verification
-
-```bash
-# Run comprehensive QA verification
-python tests/qa_verification.py
-```
-
-This will verify:
-- Citation extraction accuracy
-- Multiple citation format support
-- Clause reference extraction
-- Citation number persistence
-- Real-world scenario handling
 
 ## Project Structure
 
 ```
 Solar-PV-LLM-AI/
-├── README.md                    # This file
-├── requirements.txt             # Python dependencies
-├── setup.py                     # Package configuration
-├── pytest.ini                   # Pytest configuration
-├── .gitignore                   # Git ignore rules
-│
-├── src/                         # Source code
-│   ├── __init__.py
-│   ├── citations/               # Citation management module
-│   │   ├── __init__.py
-│   │   ├── README.md           # Citation module documentation
-│   │   ├── citation_manager.py  # Main orchestration
-│   │   ├── citation_extractor.py # Metadata extraction
-│   │   ├── citation_injector.py  # Inline citation injection
-│   │   ├── citation_formatter.py # Multi-format support
-│   │   └── reference_manager.py  # Reference validation
-│   │
-│   ├── retrieval/               # RAG components (planned)
-│   ├── llm/                     # LLM integration (planned)
-│   └── utils/                   # Utility functions
-│
-├── tests/                       # Test suite
-│   ├── __init__.py
-│   ├── qa_verification.py      # QA verification script
-│   └── test_citations/         # Citation tests
-│       ├── __init__.py
-│       ├── test_citation_manager.py
-│       ├── test_citation_extractor.py
-│       ├── test_citation_injector.py
-│       ├── test_citation_formatter.py
-│       └── test_reference_manager.py
-│
-├── data/                        # Data storage
-│   ├── raw/                    # Original documents
-│   ├── processed/              # Processed documents
-│   └── vector_db/              # Vector database
-│
-├── config/                      # Configuration files
-└── notebooks/                   # Jupyter notebooks
+├── backend/
+│   ├── api/
+│   │   └── routes/
+│   │       └── calculators.py      # API endpoints
+│   ├── calculators/
+│   │   ├── energy_yield.py         # Energy Yield Calculator
+│   │   ├── degradation_rate.py     # Degradation Rate Calculator
+│   │   └── spectral_mismatch.py    # Spectral Mismatch Calculator
+│   ├── config/
+│   │   ├── settings.py             # App configuration
+│   │   └── constants.py            # PV constants
+│   ├── models/
+│   │   └── schemas.py              # Pydantic models
+│   ├── services/
+│   │   └── nrel_client.py          # NREL API client
+│   └── main.py                     # FastAPI application
+├── tests/
+│   ├── unit/                       # Unit tests
+│   ├── integration/                # Integration tests
+│   └── conftest.py                 # Pytest fixtures
+├── docs/
+│   └── API_USAGE.md               # API documentation
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment template
+└── README.md
 ```
 
-## Citation Formats
+## Technology Stack
 
-### IEC Style (Default)
+- **Framework**: FastAPI 0.109
+- **PV Libraries**: pvlib-python, NREL-PySAM
+- **Scientific Computing**: NumPy, SciPy, pandas, scikit-learn
+- **Statistics**: statsmodels
+- **Testing**: pytest, pytest-cov
+- **API Client**: requests, httpx
+- **Logging**: loguru
+- **Validation**: Pydantic
+
+## NREL API Integration
+
+This system integrates with NREL (National Renewable Energy Laboratory) APIs:
+
+- **PVWatts v6**: Energy production estimates from weather data
+- **Solar Resource Data**: TMY (Typical Meteorological Year) datasets
+
+### Getting an API Key
+
+1. Visit [https://developer.nrel.gov/signup/](https://developer.nrel.gov/signup/)
+2. Sign up for a free account
+3. Obtain your API key
+4. Add to `.env` file: `NREL_API_KEY=your_key_here`
+
+**Note**: You can use `DEMO_KEY` for testing, but it has rate limits.
+
+## Calculators Overview
+
+### Energy Yield Calculator
+
+**Purpose**: Estimate annual and monthly energy production for a PV system
+
+**Key Features**:
+- Location-based TMY weather data via NREL PVWatts
+- Monthly and annual energy production (kWh)
+- Capacity factor, specific yield, performance ratio
+- Uncertainty quantification (typically ±10-15%)
+- 95% confidence intervals
+
+**Typical Use Cases**:
+- System design and sizing
+- Financial analysis and ROI calculations
+- Site assessment
+- Performance verification
+
+### Degradation Rate Calculator
+
+**Purpose**: Calculate annual degradation rate from time series performance data
+
+**Key Features**:
+- Robust linear regression (Huber regressor)
+- Automatic outlier detection and exclusion
+- Statistical uncertainty analysis
+- Expected lifetime to 80% capacity
+- Data quality scoring
+- Projection to year 25
+
+**Typical Use Cases**:
+- Long-term performance monitoring
+- Warranty compliance verification
+- Asset valuation
+- O&M planning
+
+### Spectral Mismatch Calculator
+
+**Purpose**: Calculate spectral mismatch correction factor per IEC 60904-7
+
+**Key Features**:
+- IEC 60904-7 compliant calculation
+- Supports custom spectral data
+- Trapezoidal integration
+- Uncertainty quantification
+- Compliance verification
+
+**Typical Use Cases**:
+- Laboratory PV device testing
+- Calibration of reference cells
+- Research and development
+- Standards compliance
+
+## Uncertainty Quantification
+
+All calculators provide comprehensive uncertainty metrics:
+
+- **Standard Error**: Absolute uncertainty in estimate
+- **Confidence Intervals**: 95% confidence bounds
+- **R-squared**: Goodness of fit (where applicable)
+- **Relative Uncertainty**: Percentage uncertainty
+
+Example uncertainty response:
+```json
+{
+  "standard_error": 716.13,
+  "confidence_level": 0.95,
+  "confidence_interval_lower": 5116.8,
+  "confidence_interval_upper": 7922.0,
+  "r_squared": 0.95,
+  "relative_uncertainty": 10.99
+}
 ```
-[1] IEC 61215-1, "Terrestrial photovoltaic (PV) modules - Design qualification and type approval - Part 1", 2021, Clause 5.2.
-```
-
-### IEEE Style
-```
-[1] "Terrestrial photovoltaic (PV) modules - Design qualification and type approval - Part 1," IEC 61215-1, 2021, sec. 5.2.
-```
-
-### APA Style
-```
-[1] International Electrotechnical Commission. (2021). Terrestrial photovoltaic (PV) modules - Design qualification and type approval - Part 1. (IEC 61215-1).
-```
-
-## Documentation
-
-- [Citation Manager Documentation](src/citations/README.md) - Comprehensive guide to the citation system
-- [Testing Guide](tests/test_citations/) - Unit test documentation
-- [QA Verification](tests/qa_verification.py) - QA test scenarios
-
-## Development Roadmap
-
-### Phase 1: Citation Management ✅ (Current)
-- [x] Citation tracker with sequential numbering
-- [x] Metadata extraction (standards, clauses, years)
-- [x] Inline citation injection
-- [x] Multiple citation formats (IEC, IEEE, APA)
-- [x] Reference validation
-- [x] Comprehensive unit tests
-- [x] QA verification
-
-### Phase 2: Document Processing (Planned)
-- [ ] PDF parsing and extraction
-- [ ] Text chunking for RAG
-- [ ] Metadata extraction from documents
-- [ ] Document preprocessing pipeline
-
-### Phase 3: RAG Implementation (Planned)
-- [ ] Vector database integration
-- [ ] Embedding generation
-- [ ] Semantic search
-- [ ] Relevance ranking
-- [ ] Context window management
-
-### Phase 4: LLM Integration (Planned)
-- [ ] OpenAI integration
-- [ ] Anthropic integration
-- [ ] Prompt engineering
-- [ ] Response generation
-- [ ] Context-aware responses
-
-### Phase 5: Advanced Features (Planned)
-- [ ] Multi-language support
-- [ ] Incremental learning
-- [ ] User feedback integration
-- [ ] Web interface
-- [ ] API endpoints
 
 ## Contributing
 
-We welcome contributions! Here's how to get started:
+Contributions are welcome! Please follow these guidelines:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for new functionality
-5. Run the test suite (`pytest tests/ -v`)
-6. Run QA verification (`python tests/qa_verification.py`)
-7. Commit your changes (`git commit -m 'Add amazing feature'`)
-8. Push to the branch (`git push origin feature/amazing-feature`)
-9. Open a Pull Request
+5. Ensure all tests pass (`pytest`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-### Coding Standards
+## Roadmap
 
-- Follow PEP 8 style guidelines
-- Add docstrings to all functions and classes
-- Include type hints where appropriate
-- Write unit tests for new features
-- Update documentation as needed
-
-## Testing Philosophy
-
-All code must include:
-1. **Unit tests** - Test individual components
-2. **Integration tests** - Test component interactions
-3. **QA verification** - Test real-world scenarios
-4. **Documentation** - Clear usage examples
+- [ ] Additional PV calculators (shading analysis, thermal modeling)
+- [ ] LLM integration for natural language queries
+- [ ] RAG (Retrieval-Augmented Generation) for PV knowledge base
+- [ ] Real-time monitoring integration
+- [ ] Enhanced visualization and reporting
+- [ ] Multi-language support
+- [ ] Docker containerization
+- [ ] Cloud deployment guides (AWS, Azure, GCP)
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
-- International Electrotechnical Commission (IEC) for standardization
-- Solar PV industry standards organizations
-- Open-source AI and ML communities
+- **NREL** for providing comprehensive solar resource APIs
+- **pvlib-python** community for excellent PV modeling tools
+- **FastAPI** for the modern, fast web framework
+- IEC standards committee for spectral mismatch calculation standards
 
-## Contact
+## Support
 
-For questions, issues, or contributions:
-- GitHub Issues: [Solar-PV-LLM-AI/issues](https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI/issues)
-- Repository: [Solar-PV-LLM-AI](https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI)
+- **Issues**: [GitHub Issues](https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI/issues)
+- **Documentation**: [API Usage Guide](docs/API_USAGE.md)
+- **NREL API Docs**: [https://developer.nrel.gov/docs/](https://developer.nrel.gov/docs/)
 
-## Version History
+## Citation
 
-### v0.1.0 (Current)
-- Initial release
-- Citation management system
-- Support for IEC, IEEE, ISO, ASTM, EN, and UL standards
-- IEC, IEEE, and APA citation formatting
-- Comprehensive test suite
-- QA verification script
+If you use this software in your research, please cite:
+
+```bibtex
+@software{solar_pv_llm_ai,
+  title = {Solar PV LLM AI System},
+  author = {Ganesh Gowri},
+  year = {2024},
+  url = {https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI}
+}
+```
 
 ---
 
-**Built for the Solar PV community** - From beginners to experts, this system aims to provide accurate, citation-backed information about solar photovoltaic technologies.
+**Built with ☀️ for the solar energy community**

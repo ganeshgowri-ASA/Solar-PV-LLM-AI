@@ -1,267 +1,274 @@
-# RAG Engine Architecture
+# Multi-Agent System Architecture
 
 ## Overview
 
-The RAG (Retrieval Augmented Generation) Engine is a comprehensive system for retrieving relevant documents and creating context for LLM-based question answering. It combines multiple retrieval strategies, re-ranking techniques, and query enhancement methods.
+The Solar PV Multi-Agent System is designed with a hierarchical architecture that enables intelligent routing, task decomposition, and collaborative problem-solving for Solar PV related queries.
 
-## System Architecture
+## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        RAG Pipeline                          │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌──────────────┐                                            │
-│  │   Query      │                                            │
-│  └──────┬───────┘                                            │
-│         │                                                     │
-│         ├──────────┐  (Optional)                             │
-│         │  HyDE    │  Generate hypothetical document         │
-│         └──────────┘                                         │
-│         │                                                     │
-│         ├─────────────────┬─────────────────┐                │
-│         ▼                 ▼                 ▼                │
-│  ┌────────────┐    ┌───────────┐    ┌──────────────┐        │
-│  │   Vector   │    │   BM25    │    │   Hybrid     │        │
-│  │ Retriever  │    │ Retriever │    │  Retriever   │        │
-│  └────────────┘    └───────────┘    └──────────────┘        │
-│         │                 │                 │                │
-│         └─────────────────┴─────────────────┘                │
-│                           │                                  │
-│                           ▼                                  │
-│                  ┌─────────────────┐                         │
-│                  │   Re-ranker     │  (Optional)             │
-│                  │  - Cohere       │                         │
-│                  │  - Cross-Enc    │                         │
-│                  └─────────────────┘                         │
-│                           │                                  │
-│                           ▼                                  │
-│                  ┌─────────────────┐                         │
-│                  │  RAG Context    │                         │
-│                  └─────────────────┘                         │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                      User Interface                      │
+│                     (API / Client)                       │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Supervisor Agent                        │
+│  - Query intake                                          │
+│  - System coordination                                   │
+│  - Response delivery                                     │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│   Router     │ │ Orchestrator │ │  Synthesizer │
+│              │ │              │ │              │
+│ - Intent     │ │ - Task       │ │ - Response   │
+│   detection  │ │   decompose  │ │   synthesis  │
+│ - Agent      │ │ - Coordinate │ │ - Conflict   │
+│   selection  │ │   execution  │ │   resolution │
+└──────────────┘ └──────────────┘ └──────────────┘
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│     IEC      │ │   Testing    │ │ Performance  │
+│  Standards   │ │  Specialist  │ │   Analyst    │
+│    Expert    │ │              │ │              │
+└──────────────┘ └──────────────┘ └──────────────┘
 ```
 
 ## Core Components
 
-### 1. Vector Retriever
+### 1. Supervisor Agent
 
-**Purpose**: Semantic similarity search using dense embeddings
-
-**Implementation**:
-- Supports ChromaDB and FAISS backends
-- Uses sentence-transformers for embedding generation
-- Cosine similarity for relevance scoring
+**Responsibility**: Central coordinator of the multi-agent system
 
 **Key Features**:
-- Persistent storage
-- Configurable embedding models
-- Metadata filtering (ChromaDB)
+- Initializes and manages all specialized agents
+- Routes queries to appropriate agents
+- Coordinates multi-agent collaboration
+- Synthesizes final responses
 
-**File**: `src/rag_engine/retrieval/vector_retriever.py`
+**Code Location**: `src/supervisor/supervisor_agent.py`
 
-### 2. BM25 Retriever
+### 2. Query Router
 
-**Purpose**: Keyword-based retrieval using statistical ranking
+**Responsibility**: Intelligent query analysis and agent selection
 
-**Implementation**:
-- BM25Okapi algorithm from rank-bm25 library
-- Tokenization and term frequency analysis
-- Configurable BM25 parameters (k1, b, epsilon)
+**Routing Strategy**:
+1. **Keyword Matching**: Analyzes query for domain-specific keywords
+2. **LLM-based Routing**: Uses LLM to understand intent and context
+3. **Capability Scoring**: Evaluates each agent's ability to handle the query
+4. **Hybrid Decision**: Combines multiple signals for final routing
 
-**Key Features**:
-- Fast keyword matching
-- No need for embeddings
-- Complementary to semantic search
+**Routing Outputs**:
+- Primary agents (main handlers)
+- Secondary agents (consultants)
+- Collaboration flag
+- Confidence score
+- Reasoning
 
-**File**: `src/rag_engine/retrieval/bm25_retriever.py`
+**Code Location**: `src/supervisor/router.py`
 
-### 3. Hybrid Retriever
+### 3. Multi-Agent Orchestrator
 
-**Purpose**: Combine vector and BM25 retrieval for best results
+**Responsibility**: Coordinates execution of multiple agents
 
-**Implementation**:
-- Two fusion methods:
-  1. **Reciprocal Rank Fusion (RRF)**: `score = Σ(1/(k + rank))`
-  2. **Weighted Score Fusion**: `score = α·vector_score + (1-α)·bm25_score`
+**Execution Modes**:
 
-**Key Features**:
-- Configurable weighting (alpha parameter)
-- Leverages strengths of both methods
-- Robust to individual method weaknesses
+#### Sequential Execution
+- Agents process query one after another
+- Early termination on high confidence
+- Use case: Simple queries with clear ownership
 
-**File**: `src/rag_engine/retrieval/hybrid_retriever.py`
+#### Parallel Execution
+- Multiple agents process simultaneously
+- Faster response time
+- Use case: Independent analyses needed
 
-**RRF Formula**:
-```
-For each document d:
-  RRF_score(d) = α / (k + rank_vector(d)) + (1-α) / (k + rank_bm25(d))
+#### Collaborative Execution
+- Agents see and build upon each other's responses
+- Two-phase process:
+  1. Initial independent responses
+  2. Collaborative refinement with context
+- Use case: Complex queries requiring multiple perspectives
 
-where:
-  - α: weight for vector search (0-1)
-  - k: constant (typically 60)
-  - rank: position in results (1, 2, 3, ...)
-```
+**Task Decomposition**:
+- Breaks complex queries into subtasks
+- Assigns subtasks to specialized agents
+- Manages execution order (sequential/parallel)
 
-### 4. Re-ranker
+**Code Location**: `src/supervisor/orchestrator.py`
 
-**Purpose**: Improve relevance by re-scoring retrieved documents
+### 4. Specialized Agents
 
-**Implementations**:
+Each agent inherits from `BaseAgent` and implements:
 
-#### A. Cohere Re-ranker
-- Uses Cohere's rerank API
-- State-of-the-art relevance scoring
-- Requires API key
-- Model: `rerank-english-v3.0`
+#### IEC Standards Expert
+- **Domain**: International Electrotechnical Commission standards
+- **Expertise**:
+  - IEC 61215 (Module design qualification)
+  - IEC 61730 (Module safety)
+  - IEC 62446 (Grid connected systems)
+  - IEC 61727 (Utility interface)
+  - IEC 60364-7-712 (Electrical installations)
+- **Keywords**: iec, standard, compliance, certification, regulation
+- **Code**: `src/agents/iec_standards_agent.py`
 
-#### B. Cross-Encoder Re-ranker
-- Local cross-encoder models
-- Jointly encodes query + document
-- No API required
-- Model: `cross-encoder/ms-marco-MiniLM-L-6-v2`
+#### Testing Specialist
+- **Domain**: PV system testing and quality assurance
+- **Expertise**:
+  - Module testing (flash, thermal, EL)
+  - System commissioning
+  - Diagnostic procedures
+  - Test equipment and methodology
+- **Keywords**: test, inspection, diagnostic, commissioning, quality
+- **Code**: `src/agents/testing_specialist_agent.py`
 
-**File**: `src/rag_engine/reranking/reranker.py`
+#### Performance Analyst
+- **Domain**: System performance and optimization
+- **Expertise**:
+  - Performance metrics (PR, specific yield)
+  - Loss analysis (soiling, shading, thermal)
+  - Optimization strategies
+  - Degradation analysis
+- **Keywords**: performance, efficiency, yield, optimization, losses
+- **Code**: `src/agents/performance_analyst_agent.py`
 
-### 5. HyDE (Hypothetical Document Embeddings)
+## Communication Protocols
 
-**Purpose**: Bridge semantic gap between queries and documents
+### Message Format
 
-**Implementation**:
-- Uses LLM (GPT-3.5/4) to generate hypothetical answer
-- Searches with generated answer instead of query
-- Can generate multiple diverse hypotheses
-
-**Algorithm**:
-```
-1. Input: user query Q
-2. Generate: hypothetical document H using LLM
-   Prompt: "Write a passage to answer: {Q}"
-3. Search: use H instead of Q for retrieval
-4. Return: documents similar to H
-```
-
-**Benefits**:
-- Better matches document style/vocabulary
-- Improved recall for complex queries
-- Bridges vocabulary mismatch
-
-**File**: `src/rag_engine/embeddings/hyde.py`
-
-### 6. RAG Pipeline
-
-**Purpose**: Orchestrate all components into unified workflow
-
-**Capabilities**:
-- Document ingestion
-- Multi-strategy retrieval
-- Optional HyDE enhancement
-- Optional re-ranking
-- Context formatting
-
-**Usage Modes**:
-1. **Vector only**: Fast, semantic search
-2. **BM25 only**: Fast, keyword search
-3. **Hybrid**: Best quality, combines both
-4. **With re-ranking**: Highest quality
-5. **With HyDE**: Best for complex queries
-
-**File**: `src/rag_engine/pipeline/rag_pipeline.py`
-
-## Data Models
-
-### Document
 ```python
-{
-  "id": str,           # Unique identifier
-  "content": str,      # Document text
-  "metadata": dict,    # Arbitrary metadata
-  "embedding": list    # Optional pre-computed embedding
-}
+Message(
+    role: MessageRole,        # USER, AGENT, SUPERVISOR, SYSTEM
+    content: str,             # Message content
+    metadata: Dict,           # Additional context
+    timestamp: datetime,      # Creation time
+    agent_id: Optional[str]   # Sender identifier
+)
 ```
 
-### RetrievalResult
+### Agent Response Format
+
 ```python
-{
-  "document": Document,      # Retrieved document
-  "score": float,           # Relevance score
-  "rank": int,              # Position in results
-  "retrieval_method": str   # Method used
-}
+AgentResponse(
+    agent_id: str,                    # Agent identifier
+    agent_type: str,                  # Agent role/type
+    content: str,                     # Response content
+    confidence: float,                # 0.0 to 1.0
+    reasoning: Optional[str],         # Explanation
+    sources: List[str],               # Reference sources
+    metadata: Dict,                   # Additional info
+    requires_collaboration: bool,     # Multi-agent flag
+    suggested_agents: List[str]       # Suggested collaborators
+)
 ```
 
-### RAGContext
-```python
-{
-  "query": str,                      # Original query
-  "retrieved_docs": [RetrievalResult],  # Retrieved documents
-  "context_text": str,               # Formatted context
-  "metadata": dict,                  # Context metadata
-  "timestamp": datetime              # Creation time
-}
-```
+## Coordination Protocols
 
-## Configuration
+### 1. Point-to-Point
+- Direct communication between supervisor and single agent
+- Use case: Simple, domain-specific queries
 
-Configuration is managed through Pydantic models in `config/rag_config.py`:
+### 2. Broadcast
+- Supervisor sends query to multiple agents
+- Agents respond independently
+- Use case: Diverse perspectives needed
 
-- **RetrievalConfig**: top_k, alpha, HyDE settings
-- **VectorStoreConfig**: store type, path, embedding model
-- **RerankerConfig**: reranker type, API keys, models
-- **HyDEConfig**: LLM settings, prompt template
+### 3. Hierarchical
+- Supervisor decomposes task
+- Assigns subtasks to agents
+- Synthesizes final response
+- Use case: Complex, multi-faceted queries
 
-Configuration can be loaded from:
-1. Environment variables (`.env` file)
-2. Code (direct instantiation)
-3. Config file (future)
+### 4. Collaborative
+- Initial independent responses
+- Agents review each other's work
+- Build upon collective knowledge
+- Use case: Queries requiring integrated expertise
 
-## Performance Characteristics
+## Fallback Mechanisms
 
-| Component | Speed | Quality | Memory | API Cost |
-|-----------|-------|---------|--------|----------|
-| Vector    | Fast  | Good    | High   | None     |
-| BM25      | Fast  | Good    | Low    | None     |
-| Hybrid    | Fast  | Better  | High   | None     |
-| Cohere RR | Medium| Best    | Low    | $$       |
-| Cross-Enc | Slow  | Best    | Medium | None     |
-| HyDE      | Slow  | Better  | Low    | $        |
+### 1. Routing Fallback
+- If LLM routing fails → Use keyword-based routing
+- If no suitable agent → Route to all with low confidence
 
-**Recommended Configurations**:
+### 2. Agent Fallback
+- If agent fails → Return error response with confidence 0.0
+- Continue with remaining agents
 
-1. **Development/Testing**: Vector only, no re-ranking
-2. **Production (Fast)**: Hybrid, no re-ranking
-3. **Production (Quality)**: Hybrid + Cross-Encoder
-4. **Production (Best)**: Hybrid + HyDE + Cohere
+### 3. Orchestration Fallback
+- If orchestration fails → Return error message
+- Log error for debugging
+
+### 4. Synthesis Fallback
+- If synthesis fails → Return best single response
+- For single response → Return directly without synthesis
+
+## Performance Optimizations
+
+### 1. Early Termination
+- Stop sequential execution on high confidence (>0.8)
+- Reduces latency for clear queries
+
+### 2. Parallel Execution
+- Execute independent agents simultaneously
+- Reduces total latency
+
+### 3. Smart Routing
+- Avoid unnecessary agent invocations
+- Focus computational resources
+
+### 4. Response Caching
+- Can be added for repeated queries
+- Reduces API costs
 
 ## Extensibility
 
-The architecture supports easy extension:
+### Adding New Agents
 
-1. **New Vector Stores**: Implement in `VectorRetriever`
-   - Already supports: ChromaDB, FAISS
-   - Easy to add: Pinecone, Weaviate, Milvus
+1. Create agent class inheriting from `BaseAgent`
+2. Implement required methods:
+   - `capabilities` property
+   - `_get_system_prompt()` method
+3. Define agent-specific keywords and expertise
+4. Register in `SupervisorAgent._initialize_agents()`
 
-2. **New Re-rankers**: Inherit from `Reranker` base class
-   - Already supports: Cohere, Cross-Encoder
-   - Easy to add: Custom models, APIs
+### Adding New Coordination Protocols
 
-3. **New Retrievers**: Implement retrieval interface
-   - Already supports: Vector, BM25, Hybrid
-   - Easy to add: TF-IDF, Elasticsearch, custom
+1. Add protocol definition to `CoordinationProtocol`
+2. Implement execution method in `MultiAgentOrchestrator`
+3. Update routing logic to select appropriate protocol
 
-4. **New Fusion Methods**: Add to `HybridRetriever`
-   - Already supports: RRF, Weighted
-   - Easy to add: Rank fusion, Score normalization
+## Security & Privacy
 
-## Testing Strategy
+- API keys stored in environment variables
+- No data persistence by default
+- All communication logged for debugging
+- Configurable log levels
 
-1. **Unit Tests**: Individual components (`tests/unit/`)
-2. **Integration Tests**: Full pipeline (`tests/integration/`)
-3. **QA Validation**: Retrieval quality metrics
+## Configuration
 
-Run tests:
-```bash
-pytest tests/unit/          # Fast unit tests
-pytest tests/integration/   # Full integration tests
-pytest                      # All tests
-```
+System behavior controlled via:
+- Environment variables (`.env`)
+- `SystemConfig` class
+- Per-agent `AgentConfig`
+
+Key parameters:
+- `default_model`: LLM model for agents
+- `supervisor_model`: LLM model for supervisor
+- `agent_temperature`: Response creativity (0.0-2.0)
+- `max_iterations`: Maximum execution rounds
+
+## Monitoring & Observability
+
+Supported through:
+- Structured logging
+- Execution time tracking
+- Agent confidence scores
+- Routing decisions logged
+- LangSmith integration (optional)

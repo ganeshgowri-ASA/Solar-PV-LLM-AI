@@ -1,1 +1,1 @@
-"""Integration tests package"""
+"""Integration tests for multi-agent system"""

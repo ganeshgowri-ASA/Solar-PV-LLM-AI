@@ -1,210 +1,116 @@
 """
-Basic usage example for RAG engine.
+Basic usage example for Solar PV Multi-Agent System
 
-This example demonstrates:
-1. Creating documents
-2. Initializing the RAG pipeline
-3. Adding documents
-4. Querying with different retrieval methods
+This example demonstrates how to:
+1. Initialize the multi-agent system
+2. Submit queries
+3. Access different types of responses
 """
 
-import sys
-from pathlib import Path
-
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.rag_engine.pipeline.rag_pipeline import RAGPipeline
-from src.rag_engine.utils.data_models import Document
-from config.rag_config import RAGConfig, RetrievalConfig, VectorStoreConfig
+import asyncio
+from src.api import SolarPVMultiAgent
 
 
-def create_sample_documents():
-    """Create sample documents about solar PV systems."""
-    return [
-        Document(
-            id="doc1",
-            content=(
-                "Solar photovoltaic (PV) panels convert sunlight directly into "
-                "electricity using semiconductor materials. The most common type "
-                "uses silicon-based cells that create an electric field when "
-                "exposed to light."
-            ),
-            metadata={
-                "source": "solar_basics.pdf",
-                "page": 1,
-                "topic": "fundamentals",
-                "date": "2024-01-15"
-            }
-        ),
-        Document(
-            id="doc2",
-            content=(
-                "The efficiency of solar panels typically ranges from 15% to 22% "
-                "for residential applications. Premium monocrystalline panels can "
-                "achieve efficiency rates above 22%, while polycrystalline panels "
-                "usually range from 15% to 17%."
-            ),
-            metadata={
-                "source": "efficiency_guide.pdf",
-                "page": 3,
-                "topic": "performance"
-            }
-        ),
-        Document(
-            id="doc3",
-            content=(
-                "Solar panel installation requires proper roof orientation, ideally "
-                "facing south in the northern hemisphere with minimal shading. The "
-                "optimal tilt angle depends on latitude and seasonal considerations."
-            ),
-            metadata={
-                "source": "installation_manual.pdf",
-                "page": 5,
-                "topic": "installation"
-            }
-        ),
-        Document(
-            id="doc4",
-            content=(
-                "Inverters are critical components that convert DC electricity from "
-                "solar panels into AC electricity for home use. String inverters, "
-                "microinverters, and power optimizers each have distinct advantages."
-            ),
-            metadata={
-                "source": "components.pdf",
-                "page": 2,
-                "topic": "equipment"
-            }
-        ),
-        Document(
-            id="doc5",
-            content=(
-                "Solar energy systems can significantly reduce electricity bills, "
-                "lower carbon footprint, and increase property value. Many regions "
-                "offer tax incentives and rebates for solar installations."
-            ),
-            metadata={
-                "source": "benefits.pdf",
-                "page": 1,
-                "topic": "economics"
-            }
-        ),
-    ]
+async def main():
+    """Run basic usage examples"""
 
+    # Initialize the multi-agent system
+    print("Initializing Solar PV Multi-Agent System...")
+    agent_system = SolarPVMultiAgent(log_level="INFO")
 
-def main():
-    """Run basic RAG pipeline example."""
-    print("=" * 80)
-    print("RAG Engine - Basic Usage Example")
-    print("=" * 80)
+    # Get system information
+    print("\n" + "="*80)
+    print("System Information:")
+    print("="*80)
+    info = agent_system.get_system_info()
+    print(f"Total Agents: {info['total_agents']}")
+    print(f"Agent Types: {', '.join(info['agent_types'])}")
+    print(f"Model: {info['model']}")
 
-    # 1. Create configuration
-    print("\n1. Initializing RAG pipeline...")
-    config = RAGConfig(
-        retrieval=RetrievalConfig(
-            top_k=10,
-            top_k_rerank=3,
-            hybrid_alpha=0.5,  # Equal weight to vector and BM25
-            use_hyde=False
-        ),
-        vector_store=VectorStoreConfig(
-            store_type="chromadb",
-            store_path=Path("./data/vector_store_example"),
-            collection_name="solar_pv_docs"
-        )
+    # Example 1: IEC Standards Query
+    print("\n" + "="*80)
+    print("Example 1: IEC Standards Query")
+    print("="*80)
+    result1 = await agent_system.query(
+        "What are the key requirements of IEC 61215 for PV module testing?"
     )
+    print(f"Question: What are the key requirements of IEC 61215?")
+    print(f"Agents Used: {', '.join(result1['agents_used'])}")
+    print(f"Response:\n{result1['response'][:500]}...")  # First 500 chars
+    print(f"Execution Time: {result1['execution_time']:.2f}s")
 
-    # Initialize pipeline
-    pipeline = RAGPipeline(config=config)
-    print("   ✓ Pipeline initialized")
-
-    # 2. Add documents
-    print("\n2. Adding sample documents...")
-    documents = create_sample_documents()
-    pipeline.add_documents(documents)
-    print(f"   ✓ Added {len(documents)} documents")
-
-    # 3. Get pipeline statistics
-    print("\n3. Pipeline Statistics:")
-    stats = pipeline.get_stats()
-    print(f"   - Vector store documents: {stats['vector_store']['document_count']}")
-    print(f"   - BM25 documents: {stats['bm25']['document_count']}")
-    print(f"   - Embedding model: {stats['vector_store']['embedding_model']}")
-
-    # 4. Example queries
-    queries = [
-        "How efficient are solar panels?",
-        "What is the best way to install solar panels?",
-        "What are the benefits of solar energy?",
-    ]
-
-    for i, query in enumerate(queries, 1):
-        print(f"\n{'-' * 80}")
-        print(f"Query {i}: {query}")
-        print('-' * 80)
-
-        # Vector retrieval
-        print("\n   A. Vector Retrieval:")
-        results = pipeline.retrieve(
-            query=query,
-            top_k=2,
-            retrieval_method="vector",
-            use_reranker=False
-        )
-        for j, result in enumerate(results, 1):
-            print(f"      [{j}] Score: {result.score:.4f}")
-            print(f"          {result.document.content[:100]}...")
-            print(f"          (Source: {result.document.metadata.get('source', 'unknown')})")
-
-        # BM25 retrieval
-        print("\n   B. BM25 Retrieval:")
-        results = pipeline.retrieve(
-            query=query,
-            top_k=2,
-            retrieval_method="bm25",
-            use_reranker=False
-        )
-        for j, result in enumerate(results, 1):
-            print(f"      [{j}] Score: {result.score:.4f}")
-            print(f"          {result.document.content[:100]}...")
-            print(f"          (Source: {result.document.metadata.get('source', 'unknown')})")
-
-        # Hybrid retrieval
-        print("\n   C. Hybrid Retrieval (RRF):")
-        results = pipeline.retrieve(
-            query=query,
-            top_k=2,
-            retrieval_method="hybrid",
-            use_reranker=False
-        )
-        for j, result in enumerate(results, 1):
-            print(f"      [{j}] Score: {result.score:.4f}")
-            print(f"          {result.document.content[:100]}...")
-            print(f"          (Source: {result.document.metadata.get('source', 'unknown')})")
-
-    # 5. Create formatted context
-    print(f"\n{'-' * 80}")
-    print("Creating RAG Context")
-    print('-' * 80)
-
-    test_query = "How do solar panels work and what is their efficiency?"
-    context = pipeline.create_context(
-        query=test_query,
-        top_k=3,
-        retrieval_method="hybrid",
-        use_reranker=False
+    # Example 2: Testing Query
+    print("\n" + "="*80)
+    print("Example 2: Testing Specialist Query")
+    print("="*80)
+    result2 = await agent_system.query(
+        "How do I perform flash testing on solar panels?"
     )
+    print(f"Question: How do I perform flash testing?")
+    print(f"Agents Used: {', '.join(result2['agents_used'])}")
+    print(f"Response:\n{result2['response'][:500]}...")
+    print(f"Execution Time: {result2['execution_time']:.2f}s")
 
-    print(f"\nQuery: {context.query}")
-    print(f"\nRetrieved {len(context.retrieved_docs)} documents:")
-    print("\nFormatted Context:")
-    print(context.context_text)
+    # Example 3: Performance Query
+    print("\n" + "="*80)
+    print("Example 3: Performance Analysis Query")
+    print("="*80)
+    result3 = await agent_system.query(
+        "What is a good performance ratio for a solar PV system and how is it calculated?"
+    )
+    print(f"Question: What is a good performance ratio?")
+    print(f"Agents Used: {', '.join(result3['agents_used'])}")
+    print(f"Response:\n{result3['response'][:500]}...")
+    print(f"Execution Time: {result3['execution_time']:.2f}s")
 
-    print("\n" + "=" * 80)
-    print("Example completed successfully!")
-    print("=" * 80)
+    # Example 4: Multi-Agent Collaboration
+    print("\n" + "="*80)
+    print("Example 4: Multi-Agent Collaborative Query")
+    print("="*80)
+    result4 = await agent_system.query(
+        "What IEC standards apply to performance testing of PV modules, "
+        "and what are the specific test procedures?"
+    )
+    print(f"Question: IEC standards for performance testing")
+    print(f"Agents Used: {', '.join(result4['agents_used'])}")
+    print(f"Collaboration Required: {len(result4['agents_used']) > 1}")
+    print(f"Response:\n{result4['response'][:500]}...")
+    print(f"Execution Time: {result4['execution_time']:.2f}s")
+
+    # Example 5: Query Specific Agent
+    print("\n" + "="*80)
+    print("Example 5: Query Specific Agent Directly")
+    print("="*80)
+    result5 = await agent_system.query_specific_agent(
+        agent_type="iec_standards_expert",
+        question="What is IEC 61730?"
+    )
+    if result5:
+        print(f"Agent: {result5['agent_type']}")
+        print(f"Confidence: {result5['confidence']:.2f}")
+        print(f"Response:\n{result5['response'][:500]}...")
+
+    # Get agent capabilities
+    print("\n" + "="*80)
+    print("Agent Capabilities:")
+    print("="*80)
+    capabilities = await agent_system.get_capabilities()
+    for agent_id, cap in capabilities.items():
+        print(f"\n{agent_id} ({cap['agent_type']}):")
+        print(f"  Description: {cap['description'][:100]}...")
+        print(f"  Keywords: {', '.join(cap['keywords'][:5])}...")
 
 
 if __name__ == "__main__":
-    main()
+    print("""
+╔════════════════════════════════════════════════════════════════════════════╗
+║                Solar PV Multi-Agent System - Basic Usage                   ║
+╚════════════════════════════════════════════════════════════════════════════╝
+    """)
+
+    # Run the async main function
+    asyncio.run(main())
+
+    print("\n" + "="*80)
+    print("Examples completed!")
+    print("="*80)

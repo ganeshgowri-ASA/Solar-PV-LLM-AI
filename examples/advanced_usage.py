@@ -1,293 +1,206 @@
 """
-Advanced usage example for RAG engine.
+Advanced usage examples for Solar PV Multi-Agent System
 
 This example demonstrates:
-1. Using HyDE for query enhancement
-2. Re-ranking with cross-encoder
-3. Custom configuration
-4. Advanced retrieval options
+1. Custom configurations
+2. Direct agent access
+3. Detailed response analysis
+4. Error handling
 """
 
-import sys
-from pathlib import Path
-import os
-
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.rag_engine.pipeline.rag_pipeline import RAGPipeline
-from src.rag_engine.utils.data_models import Document
-from src.rag_engine.embeddings.hyde import HyDE
-from src.rag_engine.reranking.reranker import CrossEncoderReranker
-from config.rag_config import RAGConfig, RetrievalConfig, VectorStoreConfig, RerankerConfig, HyDEConfig
+import asyncio
+from src.api import SolarPVMultiAgent
+from src.core.config import SystemConfig
+from src.core.protocols import Message, MessageRole
 
 
-def create_extended_documents():
-    """Create extended set of documents about solar PV systems."""
-    return [
-        Document(
-            id="doc1",
-            content=(
-                "Monocrystalline solar panels are made from a single crystal structure, "
-                "offering higher efficiency (20-22%) and better performance in low light "
-                "conditions. They have a distinctive black appearance and are more "
-                "expensive than polycrystalline alternatives."
-            ),
-            metadata={"source": "panel_types.pdf", "topic": "technology", "year": 2024}
-        ),
-        Document(
-            id="doc2",
-            content=(
-                "Polycrystalline solar panels are manufactured from multiple silicon "
-                "crystals melted together. They typically achieve 15-17% efficiency, "
-                "have a blue appearance, and are more affordable. They perform slightly "
-                "less efficiently in high temperatures."
-            ),
-            metadata={"source": "panel_types.pdf", "topic": "technology", "year": 2024}
-        ),
-        Document(
-            id="doc3",
-            content=(
-                "Thin-film solar panels use layers of photovoltaic material deposited "
-                "on a substrate. While they have lower efficiency (10-12%), they are "
-                "flexible, lightweight, and perform better in high temperatures and "
-                "partial shading conditions."
-            ),
-            metadata={"source": "panel_types.pdf", "topic": "technology", "year": 2024}
-        ),
-        Document(
-            id="doc4",
-            content=(
-                "Maximum Power Point Tracking (MPPT) is a technique used by solar "
-                "inverters to maximize power output. MPPT continuously adjusts the "
-                "electrical operating point to extract maximum available power from "
-                "solar panels under varying conditions."
-            ),
-            metadata={"source": "inverter_tech.pdf", "topic": "equipment", "year": 2024}
-        ),
-        Document(
-            id="doc5",
-            content=(
-                "Battery storage systems for solar installations typically use lithium-ion "
-                "technology. Popular options include Tesla Powerwall, LG Chem RESU, and "
-                "Enphase batteries. Storage capacity ranges from 5 kWh to 20+ kWh for "
-                "residential systems."
-            ),
-            metadata={"source": "energy_storage.pdf", "topic": "storage", "year": 2024}
-        ),
-        Document(
-            id="doc6",
-            content=(
-                "Net metering allows solar system owners to send excess electricity to "
-                "the grid in exchange for credits. These credits offset electricity drawn "
-                "from the grid at night or during low production periods, significantly "
-                "improving ROI."
-            ),
-            metadata={"source": "grid_integration.pdf", "topic": "economics", "year": 2024}
-        ),
-        Document(
-            id="doc7",
-            content=(
-                "Solar panel degradation is typically 0.5-1% per year. Quality panels "
-                "often come with 25-year performance warranties guaranteeing 80-85% of "
-                "original output after 25 years. Regular maintenance and cleaning can "
-                "minimize degradation."
-            ),
-            metadata={"source": "maintenance.pdf", "topic": "performance", "year": 2024}
-        ),
-        Document(
-            id="doc8",
-            content=(
-                "The levelized cost of energy (LCOE) for solar PV has decreased by over "
-                "90% since 2010. In many regions, new solar installations are now cheaper "
-                "than fossil fuel alternatives, making solar the most cost-effective "
-                "energy source."
-            ),
-            metadata={"source": "economics.pdf", "topic": "economics", "year": 2024}
-        ),
+async def custom_configuration_example():
+    """Example with custom configuration"""
+    print("\n" + "="*80)
+    print("Example: Custom Configuration")
+    print("="*80)
+
+    # Create custom configuration
+    custom_config = SystemConfig(
+        default_model="gpt-4-turbo-preview",
+        supervisor_model="gpt-4-turbo-preview",
+        agent_temperature=0.5,  # Lower temperature for more consistent responses
+        max_iterations=3
+    )
+
+    agent_system = SolarPVMultiAgent(
+        system_config=custom_config,
+        log_level="DEBUG"
+    )
+
+    result = await agent_system.query(
+        "Explain the difference between IEC 61215 and IEC 61730"
+    )
+
+    print(f"Response: {result['response'][:300]}...")
+    print(f"Configuration used:")
+    print(f"  - Model: {custom_config.default_model}")
+    print(f"  - Temperature: {custom_config.agent_temperature}")
+
+
+async def detailed_response_analysis():
+    """Example showing detailed response analysis"""
+    print("\n" + "="*80)
+    print("Example: Detailed Response Analysis")
+    print("="*80)
+
+    agent_system = SolarPVMultiAgent(log_level="INFO")
+
+    result = await agent_system.query(
+        "What are the common causes of underperformance in solar PV systems?"
+    )
+
+    print(f"Query: What are common causes of underperformance?")
+    print(f"\nRouting Information:")
+    if 'routing_info' in result:
+        routing = result['routing_info']
+        print(f"  - Primary Agents: {routing.get('primary_agents', [])}")
+        print(f"  - Collaboration Required: {routing.get('requires_collaboration', False)}")
+        print(f"  - Routing Confidence: {routing.get('confidence', 0):.2f}")
+        print(f"  - Task Type: {routing.get('task_type', 'unknown')}")
+
+    print(f"\nAgent Details:")
+    if 'agent_details' in result:
+        for detail in result['agent_details']:
+            print(f"  - {detail['agent_type']}:")
+            print(f"      Confidence: {detail['confidence']:.2f}")
+            if detail.get('reasoning'):
+                print(f"      Reasoning: {detail['reasoning'][:100]}...")
+
+    print(f"\nExecution Metrics:")
+    print(f"  - Total Agents Used: {len(result.get('agents_used', []))}")
+    print(f"  - Execution Time: {result.get('execution_time', 0):.2f}s")
+
+    print(f"\nFinal Response:")
+    print(f"{result['response'][:500]}...")
+
+
+async def error_handling_example():
+    """Example showing error handling"""
+    print("\n" + "="*80)
+    print("Example: Error Handling")
+    print("="*80)
+
+    agent_system = SolarPVMultiAgent(log_level="ERROR")
+
+    # Test with various edge cases
+    test_cases = [
+        "",  # Empty query
+        "What is the weather today?",  # Off-topic query
+        "Tell me about solar " * 100,  # Very long query
     ]
 
+    for i, query in enumerate(test_cases, 1):
+        print(f"\nTest Case {i}:")
+        print(f"Query: {query[:50]}..." if len(query) > 50 else f"Query: '{query}'")
 
-def example_with_hyde():
-    """Example using HyDE for query enhancement."""
-    print("\n" + "=" * 80)
-    print("Example 1: Using HyDE (Hypothetical Document Embeddings)")
-    print("=" * 80)
+        try:
+            result = await agent_system.query(query)
 
-    # Note: This requires OPENAI_API_KEY environment variable
-    if not os.getenv("OPENAI_API_KEY"):
-        print("⚠ Skipping HyDE example (OPENAI_API_KEY not set)")
-        return
+            if 'error' in result:
+                print(f"Error handled gracefully: {result['error']}")
+            else:
+                print(f"Response received (agents: {len(result.get('agents_used', []))})")
+                print(f"Response preview: {result['response'][:100]}...")
 
-    config = RAGConfig(
-        retrieval=RetrievalConfig(top_k=5, top_k_rerank=3),
-        vector_store=VectorStoreConfig(
-            store_type="chromadb",
-            store_path=Path("./data/vector_store_advanced"),
-        ),
-        hyde=HyDEConfig(
-            enabled=True,
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
-            llm_model="gpt-3.5-turbo"
-        )
-    )
-
-    pipeline = RAGPipeline(config=config)
-    documents = create_extended_documents()
-    pipeline.add_documents(documents)
-
-    query = "cost effectiveness of solar"
-
-    print(f"\nOriginal Query: {query}")
-
-    # Without HyDE
-    print("\n1. Standard Retrieval:")
-    results_standard = pipeline.retrieve(
-        query=query,
-        top_k=3,
-        retrieval_method="hybrid",
-        use_hyde=False,
-        use_reranker=False
-    )
-    for i, result in enumerate(results_standard, 1):
-        print(f"   [{i}] {result.document.content[:80]}...")
-
-    # With HyDE
-    print("\n2. With HyDE Enhancement:")
-    results_hyde = pipeline.retrieve(
-        query=query,
-        top_k=3,
-        retrieval_method="hybrid",
-        use_hyde=True,
-        use_reranker=False
-    )
-    for i, result in enumerate(results_hyde, 1):
-        print(f"   [{i}] {result.document.content[:80]}...")
+        except Exception as e:
+            print(f"Exception caught: {type(e).__name__}: {str(e)}")
 
 
-def example_with_reranking():
-    """Example using cross-encoder re-ranking."""
-    print("\n" + "=" * 80)
-    print("Example 2: Using Cross-Encoder Re-ranking")
-    print("=" * 80)
+async def multi_query_batch():
+    """Example of processing multiple queries"""
+    print("\n" + "="*80)
+    print("Example: Batch Query Processing")
+    print("="*80)
 
-    config = RAGConfig(
-        retrieval=RetrievalConfig(top_k=8, top_k_rerank=3),
-        vector_store=VectorStoreConfig(
-            store_type="chromadb",
-            store_path=Path("./data/vector_store_advanced"),
-        ),
-        reranker=RerankerConfig(
-            reranker_type="cross-encoder",
-            cross_encoder_model="cross-encoder/ms-marco-MiniLM-L-6-v2"
-        )
-    )
+    agent_system = SolarPVMultiAgent(log_level="WARNING")
 
-    # Initialize with cross-encoder reranker
-    reranker = CrossEncoderReranker(model_name=config.reranker.cross_encoder_model)
-    pipeline = RAGPipeline(config=config, reranker=reranker)
-
-    documents = create_extended_documents()
-    pipeline.add_documents(documents)
-
-    query = "What type of solar panel is most efficient?"
-
-    print(f"\nQuery: {query}")
-
-    # Without re-ranking
-    print("\n1. Before Re-ranking (top 8 from hybrid retrieval):")
-    results_before = pipeline.retrieve(
-        query=query,
-        top_k=8,
-        retrieval_method="hybrid",
-        use_reranker=False
-    )
-    for i, result in enumerate(results_before[:5], 1):
-        print(f"   [{i}] Score: {result.score:.4f}")
-        print(f"       {result.document.content[:80]}...")
-
-    # With re-ranking
-    print("\n2. After Cross-Encoder Re-ranking (top 3):")
-    results_after = pipeline.retrieve(
-        query=query,
-        top_k=8,
-        retrieval_method="hybrid",
-        use_reranker=True
-    )
-    for i, result in enumerate(results_after, 1):
-        print(f"   [{i}] Score: {result.score:.4f}")
-        print(f"       {result.document.content[:80]}...")
-
-
-def example_comparison():
-    """Compare different retrieval strategies."""
-    print("\n" + "=" * 80)
-    print("Example 3: Comparing Retrieval Strategies")
-    print("=" * 80)
-
-    config = RAGConfig(
-        retrieval=RetrievalConfig(top_k=5),
-        vector_store=VectorStoreConfig(
-            store_type="chromadb",
-            store_path=Path("./data/vector_store_advanced"),
-        )
-    )
-
-    pipeline = RAGPipeline(config=config)
-    documents = create_extended_documents()
-    pipeline.add_documents(documents)
-
-    query = "battery storage for solar systems"
-
-    print(f"\nQuery: {query}\n")
-
-    strategies = [
-        ("Vector Only", "vector", 0.5),
-        ("BM25 Only", "bm25", 0.5),
-        ("Hybrid (α=0.3)", "hybrid", 0.3),  # Favor BM25
-        ("Hybrid (α=0.5)", "hybrid", 0.5),  # Equal weight
-        ("Hybrid (α=0.7)", "hybrid", 0.7),  # Favor vector
+    queries = [
+        "What is IEC 61215?",
+        "How do I test PV modules?",
+        "What is performance ratio?",
+        "What are soiling losses?",
+        "How to commission a solar system?"
     ]
 
-    for name, method, alpha in strategies:
-        print(f"{name}:")
+    print(f"Processing {len(queries)} queries...")
 
-        # Update alpha if using hybrid
-        if method == "hybrid":
-            pipeline.hybrid_retriever.alpha = alpha
+    # Process queries sequentially
+    results = []
+    for query in queries:
+        result = await agent_system.query(query)
+        results.append(result)
 
-        results = pipeline.retrieve(
-            query=query,
-            top_k=3,
-            retrieval_method=method,
-            use_reranker=False
-        )
+    # Analyze results
+    print("\nResults Summary:")
+    for i, (query, result) in enumerate(zip(queries, results), 1):
+        print(f"\n{i}. {query}")
+        print(f"   Agents: {', '.join(result.get('agents_used', []))}")
+        print(f"   Time: {result.get('execution_time', 0):.2f}s")
+        print(f"   Response length: {len(result.get('response', ''))} chars")
 
-        for i, result in enumerate(results, 1):
-            print(f"   [{i}] Score: {result.score:.4f}")
-            print(f"       {result.document.content[:70]}...")
-        print()
+    total_time = sum(r.get('execution_time', 0) for r in results)
+    print(f"\nTotal Processing Time: {total_time:.2f}s")
+    print(f"Average Time per Query: {total_time / len(queries):.2f}s")
 
 
-def main():
-    """Run advanced examples."""
-    print("=" * 80)
-    print("RAG Engine - Advanced Usage Examples")
-    print("=" * 80)
+async def agent_comparison():
+    """Compare responses from different agents for the same query"""
+    print("\n" + "="*80)
+    print("Example: Agent Response Comparison")
+    print("="*80)
 
-    # Example 1: HyDE (requires OpenAI API key)
-    example_with_hyde()
+    agent_system = SolarPVMultiAgent(log_level="WARNING")
 
-    # Example 2: Cross-encoder re-ranking
-    example_with_reranking()
+    query = "What standards apply to solar module testing?"
 
-    # Example 3: Strategy comparison
-    example_comparison()
+    # Get responses from each agent type
+    agent_types = ["iec_standards_expert", "testing_specialist", "performance_analyst"]
 
-    print("\n" + "=" * 80)
-    print("Advanced examples completed!")
-    print("=" * 80)
+    print(f"Query: {query}\n")
+
+    for agent_type in agent_types:
+        result = await agent_system.query_specific_agent(agent_type, query)
+
+        if result:
+            print(f"{agent_type}:")
+            print(f"  Confidence: {result['confidence']:.2f}")
+            print(f"  Response: {result['response'][:200]}...")
+            print()
+
+
+async def main():
+    """Run all advanced examples"""
+
+    examples = [
+        ("Custom Configuration", custom_configuration_example),
+        ("Detailed Response Analysis", detailed_response_analysis),
+        ("Error Handling", error_handling_example),
+        ("Batch Query Processing", multi_query_batch),
+        ("Agent Comparison", agent_comparison),
+    ]
+
+    for name, example_func in examples:
+        try:
+            await example_func()
+        except Exception as e:
+            print(f"\nError in {name}: {type(e).__name__}: {str(e)}")
+
+        print("\n" + "-"*80)
 
 
 if __name__ == "__main__":
-    main()
+    print("""
+╔════════════════════════════════════════════════════════════════════════════╗
+║              Solar PV Multi-Agent System - Advanced Usage                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+    """)
+
+    asyncio.run(main())
+
+    print("\nAdvanced examples completed!")

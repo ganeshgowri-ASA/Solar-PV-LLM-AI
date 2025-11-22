@@ -1,0 +1,268 @@
+# Solar-PV-LLM-AI Kubernetes Services
+# Production-ready service definitions for backend, frontend, and redis
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: solar-pv
+  labels:
+    app: solar-pv
+    istio-injection: enabled
+
+---
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: solar-pv-backend
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+    component: backend
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+spec:
+  type: ClusterIP
+  selector:
+    app: solar-pv
+    component: backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
+
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: solar-pv-frontend
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+    component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: solar-pv
+    component: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+      protocol: TCP
+
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: solar-pv-redis
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+    component: redis
+spec:
+  type: ClusterIP
+  selector:
+    app: solar-pv
+    component: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+      protocol: TCP
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: solar-pv-redis
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+    component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: solar-pv
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: solar-pv
+        component: redis
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command:
+            - redis-server
+            - --appendonly
+            - "yes"
+            - --maxmemory
+            - "256mb"
+            - --maxmemory-policy
+            - allkeys-lru
+          ports:
+            - containerPort: 6379
+              name: redis
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: solar-pv-redis-pvc
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: solar-pv-config
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+data:
+  api-url: "https://api.solar-pv.example.com"
+  cors-origins: "https://solar-pv.example.com,https://www.solar-pv.example.com"
+  app-name: "Solar PV LLM AI"
+  log-level: "info"
+
+---
+# Secret template (values should be base64 encoded in production)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: solar-pv-secrets
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+type: Opaque
+stringData:
+  database-url: "postgresql://postgres:postgres@solar-pv-db:5432/solarpv"
+  redis-url: "redis://solar-pv-redis:6379/0"
+  secret-key: "change-this-in-production"
+  openai-api-key: ""
+  anthropic-api-key: ""
+
+---
+# Service Account for Backend
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: solar-pv-backend
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+    component: backend
+
+---
+# Service Account for Frontend
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: solar-pv-frontend
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+    component: frontend
+
+---
+# PersistentVolumeClaim for Models
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: solar-pv-models-pvc
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+# PersistentVolumeClaim for Data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: solar-pv-data-pvc
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard
+
+---
+# PersistentVolumeClaim for Redis
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: solar-pv-redis-pvc
+  namespace: solar-pv
+  labels:
+    app: solar-pv
+    component: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard

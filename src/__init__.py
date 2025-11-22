@@ -1,6 +1,3 @@
-"""
-Solar PV LLM AI System
-A comprehensive AI system for Solar PV with RAG, citations, and autonomous delivery.
-"""
+"""Solar PV LLM AI - Main package."""
 
 __version__ = "0.1.0"

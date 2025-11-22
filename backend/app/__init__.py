@@ -1,2 +1,3 @@
-"""Solar PV LLM AI - Backend Application Package"""
-__version__ = "0.1.0"
+"""Solar PV LLM AI Backend Application"""
+
+__version__ = "1.0.0"

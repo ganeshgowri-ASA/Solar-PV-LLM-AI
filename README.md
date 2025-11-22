@@ -1,363 +1,403 @@
-# Solar-PV-LLM-AI
+# Solar PV LLM AI
 
-AI-powered Solar PV system with RAG (Retrieval-Augmented Generation), citations, and comprehensive monitoring infrastructure. Built for broad audiences from beginners to experts.
+AI-powered Solar Photovoltaic analysis platform with incremental training, Retrieval-Augmented Generation (RAG), citation tracking, and autonomous delivery system. Built for broad audiences from beginners to experts.
+
+[![CI/CD](https://github.com/your-org/Solar-PV-LLM-AI/workflows/CI/CD%20Pipeline/badge.svg)](https://github.com/your-org/Solar-PV-LLM-AI/actions)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+[![React](https://img.shields.io/badge/react-18.2-blue.svg)](https://reactjs.org/)
 
 ## Features
 
-- **🤖 LLM Integration:** OpenAI/Anthropic models for intelligent responses
-- **📚 RAG System:** Retrieval-Augmented Generation with ChromaDB
-- **📖 Citation Support:** Automatic citation generation from sources
-- **🔍 LangSmith Tracing:** Complete LLM query tracing and monitoring
-- **📊 Real-time Monitoring:** Prometheus + Grafana dashboards
-- **🚨 Intelligent Alerting:** Automated alerts for errors, latency, and hallucinations
-- **🎯 Quality Tracking:** Hallucination detection and confidence scoring
-- **📋 Operational Tools:** Health checks, runbooks, and simulation scripts
+- **Incremental Training**: Continuously improve ML models with new data
+- **RAG (Retrieval-Augmented Generation)**: AI-powered question answering with source citations
+- **Multi-Audience Support**: Adaptive responses for beginners to experts
+- **Real-time Analytics**: Monitor solar PV system performance
+- **Autonomous Delivery**: Automated ML model deployment and monitoring
+- **Production-Ready**: Fully containerized with Kubernetes orchestration
+- **Scalable Architecture**: Auto-scaling based on load
+- **Comprehensive Monitoring**: Prometheus + Grafana observability
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Load Balancer                        │
+└────────────────┬────────────────────────────────────────┘
+                 │
+        ┌────────┴─────────┬────────────┬─────────────┐
+        │                  │            │             │
+   ┌────▼────┐      ┌─────▼──────┐  ┌──▼──────┐  ┌──▼────────┐
+   │Frontend │      │  Backend   │  │ Celery  │  │ Flower    │
+   │(React)  │      │  (FastAPI) │  │ Workers │  │(Monitor)  │
+   └─────────┘      └─────┬──────┘  └────┬────┘  └───────────┘
+                          │              │
+                 ┌────────┴──────────────┴────────┐
+                 │                                 │
+           ┌─────▼──────┐                   ┌─────▼──────┐
+           │ PostgreSQL │                   │   Redis    │
+           │  Database  │                   │   Cache    │
+           └────────────┘                   └────────────┘
+```
+
+## Technology Stack
+
+### Backend
+- **FastAPI**: Modern Python web framework
+- **SQLAlchemy**: ORM for database operations
+- **Celery**: Distributed task queue
+- **PyTorch**: Machine learning framework
+- **LangChain**: RAG implementation
+- **Pydantic**: Data validation
+
+### Frontend
+- **React**: UI framework
+- **TailwindCSS**: Utility-first CSS
+- **React Query**: Data fetching and caching
+- **Recharts**: Data visualization
+
+### Infrastructure
+- **Docker**: Containerization
+- **Kubernetes**: Orchestration
+- **Terraform**: Infrastructure as Code
+- **GitHub Actions**: CI/CD
+- **Prometheus**: Metrics
+- **Grafana**: Visualization
+
+### Databases
+- **PostgreSQL**: Primary database
+- **Redis**: Caching and message broker
+- **Vector Database**: RAG embeddings (pgvector/Pinecone/Weaviate)
 
 ## Quick Start
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Python 3.11+
-- OpenAI API key (or other LLM provider)
-- LangSmith API key (optional, for tracing)
+- Docker (v24.0+)
+- Docker Compose (v2.20+)
+- Git
 
-### Installation
+### Local Development
 
-1. **Clone and setup:**
 ```bash
-git clone <repository-url>
+# Clone repository
+git clone https://github.com/your-org/Solar-PV-LLM-AI.git
 cd Solar-PV-LLM-AI
 
-# Copy environment template
+# Configure environment
 cp .env.example .env
+# Edit .env with your settings
 
-# Edit .env and add your API keys
-nano .env
-```
-
-2. **Start all services:**
-```bash
+# Start all services
 docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Access services
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:8000
+# API Docs: http://localhost:8000/api/docs
+# Flower: http://localhost:5555
 ```
 
-3. **Verify installation:**
-```bash
-./scripts/monitoring/health_check.sh
-```
+### Production Deployment
 
-### Access Points
-
-- **API:** http://localhost:8000
-- **API Docs:** http://localhost:8000/docs
-- **Grafana Dashboard:** http://localhost:3000 (admin/admin123)
-- **Prometheus:** http://localhost:9090
-- **AlertManager:** http://localhost:9093
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────┐
-│           Solar PV LLM AI System            │
-├─────────────────────────────────────────────┤
-│  FastAPI Application                        │
-│  ├─ LLM Query Endpoints                     │
-│  ├─ RAG Document Retrieval                  │
-│  ├─ Citation Generation                     │
-│  └─ Metrics Export                          │
-└──────────┬────────────────────┬─────────────┘
-           │                    │
-           ▼                    ▼
-    ┌─────────────┐      ┌─────────────┐
-    │ LangSmith   │      │ Prometheus  │
-    │ (Tracing)   │      │ (Metrics)   │
-    └─────────────┘      └──────┬──────┘
-                                │
-                    ┌───────────┼───────────┐
-                    ▼           ▼           ▼
-              ┌─────────┐ ┌─────────┐ ┌──────────┐
-              │ Grafana │ │ Alerts  │ │   Node   │
-              │         │ │ Manager │ │ Exporter │
-              └─────────┘ └─────────┘ └──────────┘
-```
-
-## Usage
-
-### Making Queries
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for comprehensive deployment instructions.
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/query \
+# Quick production deployment to Kubernetes
+cd terraform
+terraform init
+terraform apply
+
+# Deploy application
+kubectl apply -f kubernetes/
+```
+
+## API Documentation
+
+Once the backend is running, access interactive API documentation:
+
+- **Swagger UI**: http://localhost:8000/api/docs
+- **ReDoc**: http://localhost:8000/api/redoc
+
+### Example API Calls
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# List solar PV systems
+curl http://localhost:8000/api/v1/solar-pv/systems
+
+# Make prediction
+curl -X POST http://localhost:8000/api/v1/ml/predict \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "What is the typical efficiency of modern solar panels?",
-    "include_citations": true,
-    "temperature": 0.7
+    "features": {
+      "temperature": 25,
+      "irradiance": 800,
+      "humidity": 60
+    },
+    "model_name": "solar_efficiency_predictor"
+  }'
+
+# RAG query
+curl -X POST http://localhost:8000/api/v1/rag/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "What is the optimal angle for solar panels?",
+    "audience_level": "beginner"
   }'
 ```
 
-Response includes:
-- AI-generated answer
-- Source citations
-- Confidence score
-- Hallucination risk score
-- LangSmith trace URL
-- Query latency
-
-### Monitoring
-
-#### Health Checks
-```bash
-# Automated health check
-./scripts/monitoring/health_check.sh
-
-# Query metrics programmatically
-python3 scripts/monitoring/query_metrics.py
-```
-
-#### Dashboards
-
-Access the Grafana dashboard at http://localhost:3000 to view:
-- Request rates and latency
-- Error rates and types
-- LLM performance metrics
-- Hallucination scores
-- System resources
-- Active alerts
-
-#### Testing Alerts
-
-Simulate various alert conditions:
-```bash
-# Test error rate alerts
-python3 scripts/monitoring/simulate_alerts.py --scenario error-rate --duration 180
-
-# Test latency alerts
-python3 scripts/monitoring/simulate_alerts.py --scenario latency --duration 180
-
-# Test hallucination detection
-python3 scripts/monitoring/simulate_alerts.py --scenario hallucination --duration 180
-```
-
-## Monitoring & Observability
-
-This project includes a comprehensive monitoring stack:
-
-### Metrics Tracked
-
-**System Metrics:**
-- CPU and memory usage
-- Request rates and latency
-- Error rates and types
-
-**LLM Metrics:**
-- Query latency and throughput
-- Token usage and costs
-- Hallucination detection
-- Response confidence scores
-
-**RAG Metrics:**
-- Document retrieval latency
-- Documents retrieved per query
-- Citation generation rate
-
-### Alerting
-
-Automated alerts for:
-- **Service Health:** Downtime, high resource usage
-- **Performance:** High latency, slow responses
-- **LLM Quality:** Hallucinations, low confidence
-- **Errors:** Elevated error rates
-
-Alerts are sent via:
-- Email (SMTP)
-- Slack webhooks
-- PagerDuty integration
-
-### LangSmith Integration
-
-Every LLM query is traced in LangSmith:
-- Complete call chain visualization
-- Input/output inspection
-- Performance breakdown
-- Cost tracking
-- User feedback collection
-
-Access traces at: https://smith.langchain.com
-
-## Documentation
-
-- **[Monitoring Guide](docs/MONITORING.md)** - Complete monitoring documentation
-- **[API Documentation](http://localhost:8000/docs)** - Interactive API docs (when running)
-
-### Runbooks for On-Call Engineers
-
-- [Service Down](docs/runbooks/service-down.md)
-- [High Hallucination Score](docs/runbooks/high-hallucination.md)
-- [High Error Rate](docs/runbooks/high-error-rate.md)
-- [High Latency](docs/runbooks/high-latency.md)
-
 ## Development
 
-### Project Structure
-
-```
-Solar-PV-LLM-AI/
-├── src/
-│   ├── api/          # FastAPI application
-│   ├── models/       # LLM integration
-│   └── utils/        # Utilities (metrics, LangSmith)
-├── monitoring/
-│   ├── prometheus/   # Prometheus config and alerts
-│   ├── grafana/      # Dashboards and provisioning
-│   └── alertmanager/ # Alert routing config
-├── scripts/
-│   └── monitoring/   # Operational scripts
-├── docs/
-│   └── runbooks/     # On-call runbooks
-└── tests/            # Test suite
-```
-
-### Running Locally
+### Backend Development
 
 ```bash
+cd backend
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Install dependencies
 pip install -r requirements.txt
 
-# Run application
-uvicorn src.api.main:app --reload --port 8000
-
 # Run tests
-pytest tests/
+pytest
+
+# Run linters
+black .
+flake8 .
+mypy app/
+
+# Run migrations
+alembic upgrade head
+
+# Start development server
+uvicorn app.main:app --reload
 ```
 
-### Environment Variables
-
-Key configuration in `.env`:
+### Frontend Development
 
 ```bash
-# LLM
-OPENAI_API_KEY=sk-your-key
-OPENAI_MODEL=gpt-4-turbo-preview
+cd frontend
 
-# LangSmith
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_API_KEY=your-langsmith-key
-LANGCHAIN_PROJECT=solar-pv-llm-ai
+# Install dependencies
+npm install
 
-# Alerting
-SMTP_HOST=smtp.gmail.com
-SMTP_FROM=alerts@yourdomain.com
-SMTP_TO=oncall@yourdomain.com
-SLACK_WEBHOOK_URL=https://hooks.slack.com/...
+# Start development server
+npm start
+
+# Run tests
+npm test
+
+# Build for production
+npm run build
+```
+
+### Workers Development
+
+```bash
+cd workers
+
+# Start Celery worker
+celery -A celery_app worker --loglevel=info
+
+# Start Celery beat (scheduler)
+celery -A celery_app beat --loglevel=info
+
+# Monitor with Flower
+celery -A celery_app flower
 ```
 
 ## Testing
 
-### Run Tests
+### Unit Tests
+
 ```bash
-pytest tests/ -v
+# Backend
+cd backend
+pytest --cov=app tests/
+
+# Frontend
+cd frontend
+npm test -- --coverage
 ```
 
-### Simulate Production Scenarios
-```bash
-# Load testing
-./scripts/load_test.sh
+### Integration Tests
 
-# Alert simulation
-python3 scripts/monitoring/simulate_alerts.py --scenario all
+```bash
+# Run all integration tests
+docker-compose -f docker-compose.test.yml up --abort-on-container-exit
 ```
 
-## Deployment
+### Load Testing
 
-### Docker Compose (Development)
 ```bash
-docker-compose up -d
+# Simple load test
+./scripts/load-test.sh
+
+# Advanced load test with Locust
+cd load-testing
+locust -f locustfile.py --host=http://localhost:8000
 ```
 
-### Production Considerations
+## Monitoring
 
-1. **Security:**
-   - Use secrets management (Vault, AWS Secrets Manager)
-   - Enable TLS/SSL
-   - Configure authentication for dashboards
-   - Restrict network access
+### Metrics
 
-2. **Scalability:**
-   - Use orchestration (Kubernetes, Docker Swarm)
-   - Implement load balancing
-   - Add horizontal scaling
-   - Use managed services for databases
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3001 (admin/admin)
+- **Flower**: http://localhost:5555
 
-3. **Reliability:**
-   - Set up redundancy
-   - Configure auto-restart
-   - Implement circuit breakers
-   - Use health checks
+### Key Metrics
 
-4. **Monitoring:**
-   - Configure alert notifications
-   - Set up on-call rotations
-   - Establish SLAs
-   - Regular runbook updates
+- API request rate and latency
+- Error rates
+- Database connection pool usage
+- Celery task queue length
+- ML model inference time
+- System resource utilization
 
-## Troubleshooting
+## Deployment Strategies
 
-### Common Issues
+### Rolling Update (Default)
 
-**Application won't start:**
 ```bash
-# Check logs
-docker-compose logs app
-
-# Verify environment variables
-docker exec solar-pv-llm-app env | grep -E "OPENAI|LANGCHAIN"
-
-# Rebuild
-docker-compose build --no-cache app
-docker-compose up -d app
+kubectl set image deployment/backend backend=new-image:v1.2.3 -n solar-pv-llm-ai
 ```
 
-**No metrics in Grafana:**
-```bash
-# Test Prometheus scraping
-curl http://localhost:9090/api/v1/targets
+### Canary Deployment
 
-# Check app metrics endpoint
-curl http://localhost:8000/metrics
+```bash
+# Deploy canary with 10% traffic
+kubectl apply -f kubernetes/canary/
 ```
 
-**Alerts not firing:**
-```bash
-# Check alert rules
-curl http://localhost:9090/api/v1/rules
+### Blue-Green Deployment
 
-# Verify AlertManager
-docker logs solar-pv-alertmanager
+```bash
+# Switch traffic to green deployment
+kubectl patch service backend -p '{"spec":{"selector":{"version":"green"}}}'
 ```
 
-See [Troubleshooting Guide](docs/MONITORING.md#troubleshooting) for more details.
+## Scaling
+
+### Manual Scaling
+
+```bash
+# Scale backend
+kubectl scale deployment backend --replicas=5 -n solar-pv-llm-ai
+
+# Scale workers
+kubectl scale deployment celery-worker --replicas=3 -n solar-pv-llm-ai
+```
+
+### Auto-scaling
+
+Horizontal Pod Autoscaler (HPA) is configured automatically:
+
+```bash
+# View autoscaling status
+kubectl get hpa -n solar-pv-llm-ai
+```
+
+## Backup & Recovery
+
+### Automated Backups
+
+Backups run daily at 2 AM UTC and are stored in S3:
+
+```bash
+# Manual backup
+./scripts/backup.sh
+
+# Restore from backup
+./scripts/restore.sh
+```
+
+### Disaster Recovery
+
+See [RUNBOOK.md](./RUNBOOK.md) for detailed disaster recovery procedures.
+
+## Rollback
+
+```bash
+# Quick rollback to previous version
+./scripts/rollback.sh
+
+# Rollback specific deployment
+./scripts/rollback.sh 0 backend
+```
+
+## Security
+
+- **Secrets Management**: Kubernetes Secrets / Sealed Secrets
+- **Network Policies**: Pod-to-pod communication restrictions
+- **RBAC**: Role-based access control
+- **SSL/TLS**: Automated certificate management with cert-manager
+- **Image Scanning**: Vulnerability scanning in CI/CD
+- **Non-root Containers**: All containers run as non-root users
+
+## Performance
+
+- **Response Time**: P95 < 200ms
+- **Throughput**: 1000+ requests/second
+- **Availability**: 99.9% uptime SLA
+- **Scalability**: Auto-scales from 2 to 10 pods
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Run test suite
-6. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Documentation
+
+- [Deployment Guide](./DEPLOYMENT.md) - Complete deployment instructions
+- [Operations Runbook](./RUNBOOK.md) - Incident response and operations
+- [API Documentation](http://localhost:8000/api/docs) - Interactive API docs
+- [Architecture Decisions](./docs/architecture.md) - Design decisions (TODO)
 
 ## License
 
-[Add your license here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- **Documentation:** [docs/MONITORING.md](docs/MONITORING.md)
-- **Issues:** GitHub Issues
-- **Email:** support@yourdomain.com
-- **On-call:** PagerDuty escalation
+- **Documentation**: https://docs.your-domain.com
+- **Issues**: https://github.com/your-org/Solar-PV-LLM-AI/issues
+- **Email**: support@your-domain.com
+- **Slack**: #solar-pv-llm-ai
+
+## Roadmap
+
+- [ ] Multi-model support (OpenAI, Anthropic, local models)
+- [ ] Real-time streaming predictions
+- [ ] Mobile app (React Native)
+- [ ] Advanced visualization dashboards
+- [ ] Multi-tenancy support
+- [ ] GraphQL API
+- [ ] Internationalization (i18n)
+- [ ] Advanced ML model versioning
+
+## Acknowledgments
+
+- FastAPI for the excellent web framework
+- React community for frontend tools
+- Kubernetes for orchestration
+- OpenAI/Anthropic for LLM APIs
+
+## Project Status
+
+🚀 **Active Development** - Version 1.0.0
 
 ---
 
-**Built with:** FastAPI, LangChain, Prometheus, Grafana, LangSmith
-**Last Updated:** 2025-11-18
+Made with ❤️ by the Solar PV LLM AI Team

@@ -1,9 +1,19 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 build/
 develop-eggs/
 dist/
@@ -16,74 +26,170 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
-*.manifest
-*.spec
-pip-log.txt
-pip-delete-this-directory.txt
+*.pyc
+*.pyo
 
-# Virtual environments
-venv/
-ENV/
-env/
-.venv
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+pids
+*.pid
+*.seed
+*.pid.lock
+lib-cov
+coverage
+*.lcov
+.nyc_output
+.grunt
+bower_components
+.lock-wscript
+build/Release
+.npm
+.eslintcache
+.stylelintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
+.cache
+.parcel-cache
+.next
+out
+.nuxt
+dist
+.cache/
+.vuepress/dist
+.temp
+.docusaurus
+.serverless/
+.fusebox/
+.dynamodb/
+.tern-port
+.vscode-test
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+*.swn
 .DS_Store
+*.sublime-project
+*.sublime-workspace
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Monitoring data
-monitoring/prometheus/data/
-monitoring/grafana/data/
-data/
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+pytest.ini
+.coverage.*
 
 # Logs
 *.log
 logs/
 
-# Docker
-*.tar
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+redis_data/
 
-# Testing
-.coverage
-.pytest_cache/
-htmlcov/
-.tox/
-.hypothesis/
+# Cache
+.cache/
+*.cache
 
-# ChromaDB
-*.chroma
-chroma.sqlite3
-
-# Jupyter
-.ipynb_checkpoints/
-
-# MacOS
+# OS
 .DS_Store
-.AppleDouble
-.LSOverride
+Thumbs.db
 
 # Temporary files
+tmp/
+temp/
 *.tmp
-*.bak
-*.swp
-*~
 
-# Secrets (just in case)
-*.pem
-*.key
-*.crt
+# Models and data (large files)
+*.pt
+*.pth
+*.h5
+*.pkl
+*.joblib
+models/*.pt
+models/*.pth
+models/*.h5
+data/raw/
+data/processed/
+datasets/
+
+# Secrets
 secrets/
-credentials.json
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+*.auto.tfvars
+
+# Kubernetes secrets
+kubernetes/secrets/*.yaml
+!kubernetes/secrets/README.md
+
+# Docker volumes
+docker-volumes/
+
+# Backups
+backups/
+*.bak
+*.backup
+
+# Documentation builds
+docs/_build/
+docs/.doctrees/
+site/
+
+# MacOS
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Generated files
+generated/
+output/

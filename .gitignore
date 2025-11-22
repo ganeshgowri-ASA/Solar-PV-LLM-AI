@@ -19,12 +19,18 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Virtual environments
+# Virtual Environment
 venv/
 ENV/
 env/
 .venv
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
@@ -34,24 +40,34 @@ env/
 *~
 .DS_Store
 
-# Environment variables
-.env
-.env.local
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
 
-# Reports and outputs
-reports/*.pdf
-reports/*.html
-reports/*.json
-reports/*.png
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
-# Model cache
-.cache/
-*.pth
+# Logs
+logs/
+*.log
+
+# Data files
+data/vector_store/*
+!data/vector_store/.gitkeep
+data/feedback_logs/*
+!data/feedback_logs/.gitkeep
+data/training_data/*
+!data/training_data/.gitkeep
+
+# Model files
 *.pt
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
+*.pth
+*.ckpt
+*.h5
+*.pkl
+*.pickle
 
 # Testing
 .pytest_cache/
@@ -59,30 +75,13 @@ reports/*.png
 htmlcov/
 .tox/
 
-# Logs
-*.log
-logs/
+# Docker
+*.env.docker
 
-# Data
-data/
-*.csv
-*.xlsx
-
-# Images (except examples)
-*.jpg
-*.jpeg
-*.png
-*.bmp
-*.tiff
-*.tif
-!examples/demo_images/*.jpg
-!examples/demo_images/*.png
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# OS
-Thumbs.db
-.DS_Store
+# Node (for frontend)
+node_modules/
+npm-debug.log
+yarn-error.log
+.next/
+out/
+dist/

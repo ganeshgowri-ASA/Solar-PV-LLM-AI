@@ -1,139 +1,393 @@
 """
-Pydantic models for API request/response validation.
+Pydantic schemas for request/response validation
 """
+from pydantic import BaseModel, Field, EmailStr, validator
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
+from enum import Enum
 
 
-class LocationInput(BaseModel):
-    """Location coordinates for PV calculations."""
-    latitude: float = Field(..., ge=-90, le=90, description="Latitude in degrees")
-    longitude: float = Field(..., ge=-180, le=180, description="Longitude in degrees")
+# ============================================
+# Enums
+# ============================================
+
+class UserRoleEnum(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
+    REVIEWER = "reviewer"
 
 
-class SystemParameters(BaseModel):
-    """PV System parameters."""
-    system_capacity: float = Field(..., gt=0, description="System capacity in kW (DC)")
-    module_type: int = Field(default=0, ge=0, le=2, description="Module type: 0=Standard, 1=Premium, 2=Thin film")
-    array_type: int = Field(default=0, ge=0, le=4, description="Array type: 0=Fixed, 1=1-axis, 2=1-axis backtracking, 3=2-axis, 4=Azimuth axis")
-    tilt: float = Field(default=20, ge=0, le=90, description="Tilt angle in degrees")
-    azimuth: float = Field(default=180, ge=0, le=360, description="Azimuth angle in degrees (180=South in N. hemisphere)")
-    losses: float = Field(default=14.08, ge=0, le=99, description="System losses in %")
-    albedo: float = Field(default=0.2, ge=0, le=1, description="Ground reflectance (albedo)")
+class FeedbackRatingEnum(int, Enum):
+    VERY_BAD = 1
+    BAD = 2
+    NEUTRAL = 3
+    GOOD = 4
+    EXCELLENT = 5
 
 
-class EnergyYieldRequest(BaseModel):
-    """Request model for Energy Yield Calculator."""
-    location: LocationInput
-    system: SystemParameters
-    year: Optional[int] = Field(default=None, description="Year for TMY data (optional)")
+class TrainingStatusEnum(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
-class UncertaintyMetrics(BaseModel):
-    """Statistical uncertainty and confidence intervals."""
-    standard_error: float = Field(..., description="Standard error of estimate")
-    confidence_level: float = Field(default=0.95, description="Confidence level (e.g., 0.95 for 95%)")
-    confidence_interval_lower: float = Field(..., description="Lower bound of confidence interval")
-    confidence_interval_upper: float = Field(..., description="Upper bound of confidence interval")
-    r_squared: Optional[float] = Field(default=None, description="R-squared value (coefficient of determination)")
-    relative_uncertainty: float = Field(..., description="Relative uncertainty as percentage")
+class ReviewStatusEnum(str, Enum):
+    PENDING = "pending"
+    IN_REVIEW = "in_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
 
 
-class MonthlyEnergy(BaseModel):
-    """Monthly energy production data."""
-    month: int = Field(..., ge=1, le=12)
-    energy_kwh: float = Field(..., description="Energy production in kWh")
-    solar_radiation: float = Field(..., description="Solar radiation in kWh/m²/day")
-    capacity_factor: float = Field(..., description="Capacity factor (0-1)")
+# ============================================
+# User Schemas
+# ============================================
+
+class UserBase(BaseModel):
+    email: EmailStr
+    username: str
 
 
-class EnergyYieldResponse(BaseModel):
-    """Response model for Energy Yield Calculator."""
-    annual_energy_kwh: float = Field(..., description="Annual energy production in kWh")
-    monthly_energy: List[MonthlyEnergy] = Field(..., description="Monthly breakdown")
-    capacity_factor: float = Field(..., description="Annual capacity factor")
-    specific_yield: float = Field(..., description="Specific yield in kWh/kWp/year")
-    performance_ratio: float = Field(..., description="Performance ratio (0-1)")
-    uncertainty: UncertaintyMetrics = Field(..., description="Uncertainty metrics")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=8)
 
 
-class DegradationDataPoint(BaseModel):
-    """Single data point for degradation analysis."""
-    timestamp: datetime = Field(..., description="Measurement timestamp")
-    normalized_output: float = Field(..., description="Normalized output (relative to initial)")
-
-    @field_validator('normalized_output')
-    @classmethod
-    def validate_normalized_output(cls, v):
-        if v <= 0 or v > 1.5:  # Allow some margin for measurement errors
-            raise ValueError('Normalized output must be between 0 and 1.5')
-        return v
+class UserLogin(BaseModel):
+    username: str
+    password: str
 
 
-class DegradationRateRequest(BaseModel):
-    """Request model for Degradation Rate Calculator."""
-    data_points: List[DegradationDataPoint] = Field(..., min_length=12, description="Time series data (minimum 12 points)")
-    system_capacity_kw: float = Field(..., gt=0, description="System capacity in kW")
-    installation_date: Optional[datetime] = Field(default=None, description="System installation date")
-    use_robust_regression: bool = Field(default=True, description="Use robust regression to handle outliers")
+class UserResponse(UserBase):
+    id: int
+    role: UserRoleEnum
+    is_active: bool
+    created_at: datetime
+    last_login: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
 
 
-class DegradationRateResponse(BaseModel):
-    """Response model for Degradation Rate Calculator."""
-    degradation_rate_per_year: float = Field(..., description="Annual degradation rate (e.g., -0.005 = -0.5%/year)")
-    degradation_rate_percent: float = Field(..., description="Annual degradation rate as percentage")
-    expected_lifetime_years: float = Field(..., description="Expected lifetime to 80% capacity")
-    uncertainty: UncertaintyMetrics = Field(..., description="Statistical uncertainty metrics")
-    data_quality_score: float = Field(..., ge=0, le=1, description="Data quality score (0-1)")
-    outliers_detected: int = Field(..., description="Number of outliers detected and excluded")
-    analysis_period_years: float = Field(..., description="Length of analysis period in years")
-    projected_output_year_25: float = Field(..., description="Projected output at year 25 (relative to initial)")
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
 
 
-class SpectralMismatchRequest(BaseModel):
-    """Request model for Spectral Mismatch Calculator."""
-    wavelengths: List[float] = Field(..., min_length=10, description="Wavelength array in nm")
-    incident_spectrum: List[float] = Field(..., min_length=10, description="Incident spectral irradiance (W/m²/nm)")
-    reference_spectrum: List[float] = Field(..., min_length=10, description="Reference spectral irradiance (W/m²/nm)")
-    cell_spectral_response: List[float] = Field(..., min_length=10, description="Cell spectral response (A/W)")
-    reference_cell_response: Optional[List[float]] = Field(default=None, description="Reference cell spectral response (A/W)")
+# ============================================
+# Query and Response Schemas
+# ============================================
 
-    @field_validator('incident_spectrum', 'reference_spectrum', 'cell_spectral_response', 'reference_cell_response')
-    @classmethod
-    def validate_same_length(cls, v, info):
-        if v is None:
-            return v
-        wavelengths_len = len(info.data.get('wavelengths', []))
-        if len(v) != wavelengths_len:
-            raise ValueError(f'All spectral arrays must have the same length as wavelengths')
-        return v
+class QueryCreate(BaseModel):
+    query_text: str = Field(..., min_length=1, max_length=5000)
+    session_id: Optional[str] = None
 
 
-class SpectralMismatchResponse(BaseModel):
-    """Response model for Spectral Mismatch Calculator."""
-    mismatch_factor: float = Field(..., description="Spectral mismatch factor M (dimensionless)")
-    corrected_irradiance: float = Field(..., description="Spectral mismatch corrected irradiance (W/m²)")
-    uncorrected_irradiance: float = Field(..., description="Broadband irradiance without correction (W/m²)")
-    correction_percentage: float = Field(..., description="Correction as percentage")
-    uncertainty: UncertaintyMetrics = Field(..., description="Uncertainty in mismatch factor")
-    iec_compliant: bool = Field(..., description="Whether calculation follows IEC 60904-7")
-    wavelength_range: tuple[float, float] = Field(..., description="Wavelength range used (min, max) in nm")
-    integration_method: str = Field(default="trapezoidal", description="Numerical integration method used")
+class QueryResponse(BaseModel):
+    id: int
+    query_text: str
+    created_at: datetime
+    session_id: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
-class HealthCheckResponse(BaseModel):
-    """Health check response."""
-    status: str = Field(..., description="Service status")
-    version: str = Field(..., description="API version")
-    timestamp: datetime = Field(..., description="Current timestamp")
-    nrel_api_available: bool = Field(..., description="NREL API availability")
+class ResponseCreate(BaseModel):
+    response_text: str
+    model_version: str
+    confidence_score: Optional[float] = None
+    latency_ms: Optional[int] = None
+    token_count: Optional[int] = None
 
 
-class ErrorResponse(BaseModel):
-    """Error response model."""
-    error: str = Field(..., description="Error type")
-    message: str = Field(..., description="Error message")
-    details: Optional[Dict[str, Any]] = Field(default=None, description="Additional error details")
-    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Error timestamp")
+class ResponseDetail(BaseModel):
+    id: int
+    query_id: int
+    response_text: str
+    model_version: str
+    confidence_score: Optional[float] = None
+    latency_ms: Optional[int] = None
+    token_count: Optional[int] = None
+    cost_estimate: Optional[float] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class QueryWithResponse(QueryResponse):
+    response: Optional[ResponseDetail] = None
+    retrieved_documents: List[Dict[str, Any]] = []
+
+
+# ============================================
+# Feedback Schemas
+# ============================================
+
+class FeedbackCreate(BaseModel):
+    response_id: int
+    rating: FeedbackRatingEnum
+    is_helpful: Optional[bool] = None
+    is_accurate: Optional[bool] = None
+    is_complete: Optional[bool] = None
+
+
+class FeedbackCommentCreate(BaseModel):
+    comment_text: str = Field(..., min_length=1, max_length=5000)
+    comment_type: Optional[str] = None
+
+
+class FeedbackTagCreate(BaseModel):
+    tag_name: str = Field(..., min_length=1, max_length=100)
+    category: Optional[str] = None
+
+
+class FeedbackCommentResponse(BaseModel):
+    id: int
+    comment_text: str
+    comment_type: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FeedbackTagResponse(BaseModel):
+    id: int
+    tag_name: str
+    category: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FeedbackResponse(BaseModel):
+    id: int
+    response_id: int
+    rating: FeedbackRatingEnum
+    is_helpful: Optional[bool] = None
+    is_accurate: Optional[bool] = None
+    is_complete: Optional[bool] = None
+    review_status: ReviewStatusEnum
+    created_at: datetime
+    comments: List[FeedbackCommentResponse] = []
+    tags: List[FeedbackTagResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class FeedbackUpdate(BaseModel):
+    review_status: Optional[ReviewStatusEnum] = None
+
+
+class FeedbackStats(BaseModel):
+    total_count: int
+    avg_rating: float
+    rating_distribution: Dict[int, int]
+    positive_feedback_rate: float
+    pending_review_count: int
+
+
+# ============================================
+# Document and RAG Schemas
+# ============================================
+
+class DocumentCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=500)
+    source_url: Optional[str] = None
+    source_type: Optional[str] = None
+    content: str = Field(..., min_length=1)
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class DocumentResponse(BaseModel):
+    id: int
+    title: str
+    source_url: Optional[str] = None
+    source_type: Optional[str] = None
+    content_hash: str
+    version: int
+    is_active: bool
+    created_at: datetime
+    chunk_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    is_active: Optional[bool] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class VectorSearchRequest(BaseModel):
+    query_text: str = Field(..., min_length=1)
+    top_k: int = Field(default=5, ge=1, le=20)
+    similarity_threshold: Optional[float] = Field(default=0.7, ge=0, le=1)
+
+
+class VectorSearchResult(BaseModel):
+    chunk_id: int
+    document_id: int
+    document_title: str
+    content: str
+    relevance_score: float
+    source_url: Optional[str] = None
+
+
+# ============================================
+# Training and Retraining Schemas
+# ============================================
+
+class TrainingRunCreate(BaseModel):
+    model_name: str
+    model_version: str
+    base_model: Optional[str] = None
+    training_type: str
+    training_config: Optional[Dict[str, Any]] = None
+
+
+class TrainingRunResponse(BaseModel):
+    id: int
+    model_name: str
+    model_version: str
+    base_model: Optional[str] = None
+    training_type: str
+    status: TrainingStatusEnum
+    dataset_size: Optional[int] = None
+    feedback_count: Optional[int] = None
+    metrics: Optional[Dict[str, Any]] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    duration_seconds: Optional[int] = None
+    checkpoint_path: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TrainingRunUpdate(BaseModel):
+    status: Optional[TrainingStatusEnum] = None
+    metrics: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+
+
+class RetrainingRequest(BaseModel):
+    model_name: str
+    training_type: str = Field(default="lora")
+    min_feedback_rating: Optional[int] = Field(default=1, ge=1, le=5)
+    max_feedback_rating: Optional[int] = Field(default=5, ge=1, le=5)
+    include_low_confidence: bool = Field(default=True)
+    confidence_threshold: Optional[float] = Field(default=0.8, ge=0, le=1)
+    training_config: Optional[Dict[str, Any]] = None
+
+
+class ModelDeploymentCreate(BaseModel):
+    training_run_id: int
+    model_version: str
+    deployment_config: Optional[Dict[str, Any]] = None
+
+
+class ModelDeploymentResponse(BaseModel):
+    id: int
+    training_run_id: int
+    model_version: str
+    is_active: bool
+    deployed_at: Optional[datetime] = None
+    deactivated_at: Optional[datetime] = None
+    rollback_version: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================
+# Admin Dashboard Schemas
+# ============================================
+
+class DashboardMetrics(BaseModel):
+    total_queries: int
+    total_feedbacks: int
+    avg_rating: float
+    avg_confidence: float
+    avg_response_time_ms: float
+    positive_feedback_rate: float
+    low_confidence_count: int
+    pending_review_count: int
+    active_model_version: str
+    last_training_run: Optional[datetime] = None
+
+
+class SystemHealth(BaseModel):
+    database_healthy: bool
+    vector_store_healthy: bool
+    llm_service_healthy: bool
+    celery_healthy: bool
+    overall_status: str
+
+
+class FeedbackForReview(BaseModel):
+    id: int
+    response_id: int
+    query_text: str
+    response_text: str
+    rating: FeedbackRatingEnum
+    confidence_score: Optional[float] = None
+    review_status: ReviewStatusEnum
+    created_at: datetime
+    comments: List[FeedbackCommentResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class RetrainingRecommendation(BaseModel):
+    should_retrain: bool
+    reason: str
+    feedback_count: int
+    low_confidence_count: int
+    negative_feedback_count: int
+    recommended_config: Dict[str, Any]
+
+
+# ============================================
+# Bulk Operations Schemas
+# ============================================
+
+class BulkFeedbackReview(BaseModel):
+    feedback_ids: List[int]
+    review_status: ReviewStatusEnum
+
+
+class BulkDocumentUpload(BaseModel):
+    documents: List[DocumentCreate]
+
+
+# ============================================
+# Pagination Schemas
+# ============================================
+
+class PaginationParams(BaseModel):
+    skip: int = Field(default=0, ge=0)
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class PaginatedResponse(BaseModel):
+    items: List[Any]
+    total: int
+    skip: int
+    limit: int
+    has_next: bool
+
+    @validator("has_next", pre=True, always=True)
+    def calculate_has_next(cls, v, values):
+        return values["skip"] + values["limit"] < values["total"]

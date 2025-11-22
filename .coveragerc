@@ -1,0 +1,132 @@
+[run]
+# Source directories to measure
+source =
+    src
+    app
+    backend
+
+# Files to include
+include =
+    src/*
+    app/*
+    backend/*
+
+# Files to omit from coverage
+omit =
+    */tests/*
+    */__pycache__/*
+    */.venv/*
+    */venv/*
+    */migrations/*
+    */alembic/*
+    */.git/*
+    setup.py
+    conftest.py
+    */conftest.py
+
+# Enable branch coverage
+branch = True
+
+# Parallel execution support
+parallel = True
+
+# Data file location
+data_file = .coverage
+
+# Context for different test types
+context = ${COVERAGE_CONTEXT:default}
+
+[paths]
+# Path mappings for combining coverage from different machines
+source =
+    src
+    */src
+    */site-packages/
+
+[report]
+# Reporting options
+show_missing = True
+skip_covered = False
+skip_empty = True
+precision = 2
+
+# Fail if coverage is below threshold
+fail_under = 80
+
+# Exclude lines from coverage
+exclude_lines =
+    # Standard pragmas
+    pragma: no cover
+
+    # Debug-only code
+    def __repr__
+    def __str__
+
+    # Defensive assertions
+    raise AssertionError
+    raise NotImplementedError
+
+    # Type checking
+    if TYPE_CHECKING:
+    if typing.TYPE_CHECKING:
+
+    # Abstract methods
+    @abstractmethod
+    @abc.abstractmethod
+
+    # Protocol definitions
+    @overload
+
+    # Main execution block
+    if __name__ == .__main__.:
+
+    # Pass statements in abstract classes
+    pass
+
+    # Ellipsis in stub files
+    \.\.\.
+
+    # Unreachable code markers
+    # nocov
+    # pragma: no cover
+
+# Partial branches to exclude
+partial_branches =
+    # Debug conditions
+    pragma: no branch
+    if DEBUG:
+    if settings.DEBUG:
+
+[html]
+# HTML report directory
+directory = htmlcov
+
+# Report title
+title = Solar PV LLM AI - Coverage Report
+
+# Show contexts in report
+show_contexts = True
+
+# Extra CSS for report
+extra_css = None
+
+[xml]
+# XML report output
+output = coverage.xml
+
+# Package depth in XML
+package_depth = 99
+
+[json]
+# JSON report output
+output = coverage.json
+
+# Pretty print JSON
+pretty_print = True
+
+# Show contexts
+show_contexts = True
+
+[lcov]
+# LCOV report output
+output = coverage.lcov

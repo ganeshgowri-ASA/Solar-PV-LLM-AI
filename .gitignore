@@ -16,9 +16,12 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual environments
 venv/
@@ -39,29 +42,36 @@ ENV/
 .coverage
 htmlcov/
 .tox/
-.mypy_cache/
+
+# Data files
+*.pdf
+data/raw/*
+data/processed/*
+data/output/*
+!data/.gitkeep
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/output/.gitkeep
+
+# Logs
+logs/
+*.log
 
 # Environment variables
 .env
 .env.local
 
-# Data directories
-data/raw/*.pdf
-data/processed/*.json
-*.pdf
-*.json
+# Jupyter Notebooks
+.ipynb_checkpoints
 
-# Keep directory structure
-!data/raw/.gitkeep
-!data/processed/.gitkeep
+# Model files
+models/
+*.pkl
+*.joblib
+*.h5
+*.pth
 
-# Logs
-*.log
-logs/
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
-
-# OS
-Thumbs.db
+# Temporary files
+tmp/
+temp/
+*.tmp

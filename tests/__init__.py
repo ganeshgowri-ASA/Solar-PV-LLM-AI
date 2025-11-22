@@ -1,1 +1,1 @@
-"""Test suite for IEC PDF ingestion pipeline"""
+"""Tests for Solar PV LLM AI system."""

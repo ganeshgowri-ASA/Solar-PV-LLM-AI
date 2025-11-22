@@ -1,84 +1,55 @@
-#!/usr/bin/env python3
-"""
-Basic usage example for IEC PDF ingestion pipeline.
-"""
+"""Basic usage example for IEC PDF ingestion."""
 
-import sys
-from pathlib import Path
+from src.ingestion.api import quick_ingest, load_document
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Example 1: Quick ingestion with defaults
+print("Example 1: Quick Ingestion")
+print("-" * 50)
 
-from src.pipeline import create_pipeline
+# Process a PDF (replace with actual PDF path)
+# document = quick_ingest("data/raw/iec_61730-1.pdf")
 
+# For demonstration, we'll show what you would do with the result:
+# print(f"Document ID: {document.document_id}")
+# print(f"Standard: {document.metadata.standard_id}")
+# print(f"Total chunks: {len(document.chunks)}")
+# print(f"Total Q&A pairs: {document.get_total_qa_pairs()}")
 
-def main():
-    """Basic pipeline usage example."""
-
-    # Example 1: Process a single PDF with default settings
-    print("Example 1: Basic processing")
-    print("=" * 60)
-
-    pipeline = create_pipeline()
-
-    # Note: Replace with actual PDF path
-    pdf_path = "data/raw/sample_iec_standard.pdf"
-
-    if not Path(pdf_path).exists():
-        print(f"⚠ PDF not found: {pdf_path}")
-        print("Please provide a valid IEC standard PDF path")
-        return
-
-    result = pipeline.process_pdf(pdf_path)
-
-    if result['success']:
-        print(f"✓ Processing successful!")
-        print(f"  Output: {result['output_path']}")
-        print(f"  Chunks: {result['statistics']['total_chunks']}")
-        print(f"  Q&A pairs: {result['statistics']['total_qa_pairs']}")
-        print(f"  Time: {result['statistics']['processing_time_seconds']:.2f}s")
-
-    print("\n")
-
-    # Example 2: Custom chunk size
-    print("Example 2: Custom configuration")
-    print("=" * 60)
-
-    custom_pipeline = create_pipeline(
-        chunk_size=800,
-        chunk_overlap=150,
-        enable_qa=True
-    )
-
-    print("Pipeline configured with:")
-    print("  - Chunk size: 800 characters")
-    print("  - Overlap: 150 characters")
-    print("  - Q&A generation: Enabled")
-
-    print("\n")
-
-    # Example 3: Validation
-    print("Example 3: Validation")
-    print("=" * 60)
-
-    if result['success']:
-        validation = pipeline.validate_processing(result['output_path'])
-
-        if validation['valid']:
-            print("✓ Validation passed!")
-        else:
-            print("✗ Validation issues found:")
-            for error in validation['errors']:
-                print(f"  Error: {error}")
-            for warning in validation['warnings']:
-                print(f"  Warning: {warning}")
-
-        print("\nStatistics:")
-        stats = validation['statistics']
-        print(f"  Total chunks: {stats.get('total_chunks', 0)}")
-        print(f"  Total Q&A pairs: {stats.get('total_qa_pairs', 0)}")
-        print(f"  Unique clauses: {stats.get('unique_clauses', 0)}")
+print("\nTo run this example, provide a PDF path:")
+print("  document = quick_ingest('path/to/iec_standard.pdf')")
+print()
 
 
-if __name__ == '__main__':
-    main()
+# Example 2: Load and explore processed document
+print("\nExample 2: Load Processed Document")
+print("-" * 50)
+
+# Load previously processed document
+# document = load_document("data/output/IEC_61730-1_processed.json")
+
+# Explore chunks
+# for i, chunk in enumerate(document.chunks[:3]):  # First 3 chunks
+#     print(f"\nChunk {i+1}:")
+#     print(f"  Clause: {chunk.clause_info.clause_number if chunk.clause_info else 'N/A'}")
+#     print(f"  Content preview: {chunk.content[:100]}...")
+#     print(f"  Q&A pairs: {len(chunk.qa_pairs)}")
+
+print("\nTo run this example, load a processed document:")
+print("  document = load_document('data/output/your_document.json')")
+print()
+
+
+# Example 3: Access Q&A pairs
+print("\nExample 3: Access Q&A Pairs")
+print("-" * 50)
+
+# for chunk in document.chunks:
+#     if chunk.qa_pairs:
+#         print(f"\nClause {chunk.clause_info.clause_number if chunk.clause_info else 'N/A'}:")
+#         for qa in chunk.qa_pairs:
+#             print(f"  Q: {qa.question}")
+#             print(f"  A: {qa.answer}")
+#             print()
+
+print("Iterate through chunks and access qa_pairs attribute")
+print()

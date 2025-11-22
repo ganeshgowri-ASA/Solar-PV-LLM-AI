@@ -1,73 +1,43 @@
-"""
-IEC PDF Loader - Load and parse IEC standard PDFs with structure preservation.
-"""
+"""PDF loader for IEC standards that preserves document structure."""
 
 import re
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass
+import logging
 from pathlib import Path
+from typing import List, Dict, Tuple, Optional
 import pdfplumber
 from PyPDF2 import PdfReader
-import logging
+
+from .models import ClauseInfo, DocumentMetadata
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class StructuredSection:
-    """Represents a structured section from IEC PDF."""
-
-    clause_number: str
-    clause_title: str
-    content: str
-    page_numbers: List[int]
-    level: int
-    parent_clause: Optional[str] = None
-    section_type: str = "clause"  # clause, annex, figure, table, note
-
-    def __str__(self):
-        return f"{self.clause_number} {self.clause_title}"
-
-
 class IECPDFLoader:
-    """
-    Load and parse IEC standard PDFs while preserving structural information.
-    """
+    """Loader for IEC PDF documents that preserves clause/section structure."""
 
-    # Patterns for identifying clauses and sections
-    CLAUSE_HEADER_PATTERNS = [
-        r'^(\d+(?:\.\d+)*)\s+(.+)$',  # Numeric: 5.2.3 Title
-        r'^([A-Z])\s+\((?:normative|informative)\)\s*(.*)$',  # Annex: A (normative) Title
-        r'^(Annex\s+[A-Z])\s+\((?:normative|informative)\)\s*(.*)$',  # Annex A (normative) Title
-    ]
-
-    # Patterns for special sections
-    FIGURE_PATTERN = r'Figure\s+(\d+(?:\.\d+)?)\s*[–—-]\s*(.+)'
-    TABLE_PATTERN = r'Table\s+(\d+(?:\.\d+)?)\s*[–—-]\s*(.+)'
-    NOTE_PATTERN = r'NOTE\s+(\d+)?\s*(.+)'
-
-    def __init__(self, preserve_formatting: bool = True):
-        """
-        Initialize PDF loader.
+    def __init__(self, preserve_layout: bool = True, extract_tables: bool = True):
+        """Initialize the PDF loader.
 
         Args:
-            preserve_formatting: Whether to preserve text formatting
+            preserve_layout: Whether to preserve text layout during extraction
+            extract_tables: Whether to extract tables from PDF
         """
-        self.preserve_formatting = preserve_formatting
-        self.clause_regex = [re.compile(p, re.MULTILINE) for p in self.CLAUSE_HEADER_PATTERNS]
-        self.figure_regex = re.compile(self.FIGURE_PATTERN, re.IGNORECASE)
-        self.table_regex = re.compile(self.TABLE_PATTERN, re.IGNORECASE)
-        self.note_regex = re.compile(self.NOTE_PATTERN)
+        self.preserve_layout = preserve_layout
+        self.extract_tables = extract_tables
+        self.clause_patterns = [
+            re.compile(r"^(\d+(?:\.\d+)*)\s+([A-Z][^\n]{0,200})$", re.MULTILINE),
+            re.compile(r"^Clause\s+(\d+(?:\.\d+)*):?\s+([A-Z][^\n]{0,200})$", re.MULTILINE),
+            re.compile(r"^(\d+(?:\.\d+)*)\s*\n+([A-Z][^\n]{0,200})$", re.MULTILINE),
+        ]
 
-    def load_pdf(self, pdf_path: str) -> Dict[str, Any]:
-        """
-        Load PDF and extract text with metadata.
+    def load(self, pdf_path: str) -> Tuple[str, List[ClauseInfo], DocumentMetadata]:
+        """Load PDF and extract text, clause structure, and metadata.
 
         Args:
-            pdf_path: Path to PDF file
+            pdf_path: Path to the PDF file
 
         Returns:
-            Dictionary with text, page_count, and metadata
+            Tuple of (full_text, clauses, metadata)
         """
         pdf_path = Path(pdf_path)
         if not pdf_path.exists():
@@ -75,263 +45,261 @@ class IECPDFLoader:
 
         logger.info(f"Loading PDF: {pdf_path}")
 
-        # Extract text and metadata
-        pages_text = []
-        metadata = {}
+        # Extract metadata
+        metadata = self._extract_basic_metadata(pdf_path)
 
-        try:
-            # Use pdfplumber for better text extraction
-            with pdfplumber.open(pdf_path) as pdf:
-                metadata = {
-                    'page_count': len(pdf.pages),
-                    'filename': pdf_path.name
-                }
+        # Extract text with structure
+        full_text, page_texts = self._extract_text_with_structure(pdf_path)
 
-                for page_num, page in enumerate(pdf.pages, start=1):
-                    text = page.extract_text()
-                    if text:
-                        pages_text.append({
-                            'page_number': page_num,
-                            'text': text
-                        })
+        # Extract clauses
+        clauses = self._extract_clauses(full_text, page_texts)
 
-            # Also get PDF metadata
-            try:
-                reader = PdfReader(str(pdf_path))
-                if reader.metadata:
-                    metadata.update({
-                        'pdf_title': reader.metadata.get('/Title', ''),
-                        'pdf_author': reader.metadata.get('/Author', ''),
-                        'pdf_subject': reader.metadata.get('/Subject', ''),
-                        'pdf_creator': reader.metadata.get('/Creator', ''),
-                    })
-            except Exception as e:
-                logger.warning(f"Could not extract PDF metadata: {e}")
+        logger.info(
+            f"Loaded PDF: {len(page_texts)} pages, "
+            f"{len(full_text)} chars, {len(clauses)} clauses"
+        )
 
-        except Exception as e:
-            logger.error(f"Error loading PDF: {e}")
-            raise
+        return full_text, clauses, metadata
 
-        # Combine all text
-        full_text = '\n'.join([p['text'] for p in pages_text])
-
-        return {
-            'text': full_text,
-            'pages': pages_text,
-            'metadata': metadata
-        }
-
-    def identify_clause_headers(self, text: str) -> List[Dict[str, Any]]:
-        """
-        Identify clause headers in text.
-
-        Args:
-            text: Text to analyze
-
-        Returns:
-            List of clause header information
-        """
-        headers = []
-        lines = text.split('\n')
-
-        for line_num, line in enumerate(lines):
-            line = line.strip()
-            if not line:
-                continue
-
-            # Check for numeric clause headers
-            for regex in self.clause_regex:
-                match = regex.match(line)
-                if match:
-                    groups = match.groups()
-                    if len(groups) >= 2:
-                        clause_num = groups[0]
-                        clause_title = groups[1].strip() if groups[1] else ""
-
-                        # Calculate level
-                        if '.' in clause_num and clause_num[0].isdigit():
-                            level = len(clause_num.split('.'))
-                            parent = '.'.join(clause_num.split('.')[:-1])
-                        elif clause_num.isalpha():
-                            level = 1
-                            parent = None
-                        else:
-                            level = 1
-                            parent = None
-
-                        # Determine section type
-                        if 'annex' in line.lower() or clause_num.isalpha():
-                            section_type = 'annex'
-                        else:
-                            section_type = 'clause'
-
-                        headers.append({
-                            'line_number': line_num,
-                            'clause_number': clause_num,
-                            'clause_title': clause_title,
-                            'level': level,
-                            'parent_clause': parent,
-                            'section_type': section_type,
-                            'raw_line': line
-                        })
-                        break
-
-        return headers
-
-    def extract_structured_sections(self, pdf_data: Dict[str, Any]) -> List[StructuredSection]:
-        """
-        Extract structured sections from PDF data.
-
-        Args:
-            pdf_data: PDF data from load_pdf()
-
-        Returns:
-            List of StructuredSection objects
-        """
-        full_text = pdf_data['text']
-        pages = pdf_data['pages']
-
-        # Identify all clause headers
-        headers = self.identify_clause_headers(full_text)
-
-        if not headers:
-            logger.warning("No clause headers found, returning full text as single section")
-            return [
-                StructuredSection(
-                    clause_number="0",
-                    clause_title="Full Document",
-                    content=full_text,
-                    page_numbers=list(range(1, len(pages) + 1)),
-                    level=0,
-                    section_type="document"
-                )
-            ]
-
-        sections = []
-        lines = full_text.split('\n')
-
-        # Extract content for each section
-        for i, header in enumerate(headers):
-            start_line = header['line_number']
-            end_line = headers[i + 1]['line_number'] if i + 1 < len(headers) else len(lines)
-
-            # Get section content
-            section_lines = lines[start_line:end_line]
-            content = '\n'.join(section_lines).strip()
-
-            # Determine page numbers (approximate)
-            page_numbers = self._estimate_page_numbers(
-                start_line, end_line, len(lines), len(pages)
-            )
-
-            section = StructuredSection(
-                clause_number=header['clause_number'],
-                clause_title=header['clause_title'],
-                content=content,
-                page_numbers=page_numbers,
-                level=header['level'],
-                parent_clause=header.get('parent_clause'),
-                section_type=header['section_type']
-            )
-
-            sections.append(section)
-
-        logger.info(f"Extracted {len(sections)} structured sections")
-        return sections
-
-    def _estimate_page_numbers(
-        self, start_line: int, end_line: int, total_lines: int, total_pages: int
-    ) -> List[int]:
-        """
-        Estimate page numbers for a section based on line numbers.
-
-        Args:
-            start_line: Starting line number
-            end_line: Ending line number
-            total_lines: Total lines in document
-            total_pages: Total pages in document
-
-        Returns:
-            List of page numbers
-        """
-        if total_lines == 0:
-            return [1]
-
-        # Estimate lines per page
-        lines_per_page = total_lines / total_pages
-
-        # Calculate page range
-        start_page = max(1, int(start_line / lines_per_page) + 1)
-        end_page = min(total_pages, int(end_line / lines_per_page) + 1)
-
-        return list(range(start_page, end_page + 1))
-
-    def load_and_structure(self, pdf_path: str) -> Tuple[Dict[str, Any], List[StructuredSection]]:
-        """
-        Load PDF and extract structured sections in one call.
+    def _extract_basic_metadata(self, pdf_path: Path) -> DocumentMetadata:
+        """Extract basic metadata from PDF.
 
         Args:
             pdf_path: Path to PDF file
 
         Returns:
-            Tuple of (pdf_data, sections)
+            DocumentMetadata object
         """
-        pdf_data = self.load_pdf(pdf_path)
-        sections = self.extract_structured_sections(pdf_data)
-        return pdf_data, sections
+        try:
+            reader = PdfReader(str(pdf_path))
+            info = reader.metadata if reader.metadata else {}
 
-    def get_section_hierarchy(self, sections: List[StructuredSection]) -> Dict[str, Any]:
-        """
-        Build hierarchical structure of sections.
+            return DocumentMetadata(
+                title=info.get("/Title", None),
+                total_pages=len(reader.pages),
+                file_path=str(pdf_path),
+                file_size_bytes=pdf_path.stat().st_size,
+            )
+        except Exception as e:
+            logger.warning(f"Error extracting basic metadata: {e}")
+            return DocumentMetadata(
+                file_path=str(pdf_path),
+                file_size_bytes=pdf_path.stat().st_size if pdf_path.exists() else None,
+            )
+
+    def _extract_text_with_structure(self, pdf_path: Path) -> Tuple[str, Dict[int, str]]:
+        """Extract text from PDF while preserving structure.
 
         Args:
-            sections: List of sections
+            pdf_path: Path to PDF file
 
         Returns:
-            Nested dictionary representing hierarchy
+            Tuple of (full_text, page_texts_dict)
         """
-        hierarchy = {}
+        page_texts = {}
+        all_text = []
 
-        for section in sections:
-            clause_num = section.clause_number
-            parts = clause_num.split('.')
+        try:
+            with pdfplumber.open(str(pdf_path)) as pdf:
+                for page_num, page in enumerate(pdf.pages, start=1):
+                    # Extract text with layout preservation
+                    text = page.extract_text(layout=self.preserve_layout)
 
-            # Navigate to correct position in hierarchy
-            current = hierarchy
-            for i, part in enumerate(parts):
-                key = '.'.join(parts[:i + 1])
-                if key not in current:
-                    current[key] = {
-                        'section': section,
-                        'children': {}
-                    }
-                current = current[key]['children']
+                    if text:
+                        # Clean up text
+                        text = self._clean_text(text)
+                        page_texts[page_num] = text
+                        all_text.append(text)
 
-        return hierarchy
+                        # Extract tables if enabled
+                        if self.extract_tables:
+                            tables = page.extract_tables()
+                            if tables:
+                                for table in tables:
+                                    table_text = self._format_table(table)
+                                    page_texts[page_num] += f"\n\n{table_text}"
+                                    all_text.append(table_text)
 
-    def extract_references(self, text: str) -> List[str]:
-        """
-        Extract cross-references to other clauses.
+        except Exception as e:
+            logger.error(f"Error extracting text from PDF: {e}")
+            raise
+
+        full_text = "\n\n".join(all_text)
+        return full_text, page_texts
+
+    def _clean_text(self, text: str) -> str:
+        """Clean extracted text.
 
         Args:
-            text: Text to analyze
+            text: Raw extracted text
 
         Returns:
-            List of referenced clause numbers
+            Cleaned text
         """
-        # Pattern for clause references
-        ref_patterns = [
-            r'(?:see|See|according to|as per)\s+(?:clause|Clause|section|Section)\s+(\d+(?:\.\d+)*)',
-            r'(?:in|In)\s+(\d+(?:\.\d+)*)',
-            r'\[(\d+(?:\.\d+)*)\]',
-        ]
+        # Remove excessive whitespace
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = re.sub(r" {2,}", " ", text)
 
-        references = []
-        for pattern in ref_patterns:
-            matches = re.finditer(pattern, text)
+        # Remove page numbers (common patterns)
+        text = re.sub(r"^\d+\s*$", "", text, flags=re.MULTILINE)
+        text = re.sub(r"^–\s*\d+\s*–\s*$", "", text, flags=re.MULTILINE)
+
+        # Remove headers/footers (IEC specific)
+        text = re.sub(r"^IEC\s+\d+(?:-\d+)*:\d{4}.*$", "", text, flags=re.MULTILINE)
+
+        return text.strip()
+
+    def _format_table(self, table: List[List[str]]) -> str:
+        """Format extracted table as text.
+
+        Args:
+            table: Table data as list of rows
+
+        Returns:
+            Formatted table text
+        """
+        if not table:
+            return ""
+
+        # Simple table formatting
+        formatted_rows = []
+        for row in table:
+            if row and any(cell for cell in row if cell):
+                row_text = " | ".join(str(cell or "") for cell in row)
+                formatted_rows.append(row_text)
+
+        return "\n".join(formatted_rows)
+
+    def _extract_clauses(
+        self, full_text: str, page_texts: Dict[int, str]
+    ) -> List[ClauseInfo]:
+        """Extract clause/section information from text.
+
+        Args:
+            full_text: Full document text
+            page_texts: Dictionary of page number to text
+
+        Returns:
+            List of ClauseInfo objects
+        """
+        clauses = []
+        seen_clauses = set()
+
+        # Try each pattern
+        for pattern in self.clause_patterns:
+            matches = pattern.finditer(full_text)
+
             for match in matches:
-                ref = match.group(1)
-                if ref and ref not in references:
-                    references.append(ref)
+                clause_num = match.group(1)
+                clause_title = match.group(2).strip() if len(match.groups()) > 1 else None
 
-        return references
+                # Skip if already seen
+                if clause_num in seen_clauses:
+                    continue
+
+                seen_clauses.add(clause_num)
+
+                # Determine nesting level
+                level = clause_num.count(".") + 1
+
+                # Determine parent clause
+                parent_clause = None
+                if "." in clause_num:
+                    parent_clause = ".".join(clause_num.split(".")[:-1])
+
+                # Find page number
+                page_num = self._find_page_for_position(match.start(), page_texts)
+
+                clause_info = ClauseInfo(
+                    clause_number=clause_num,
+                    title=clause_title,
+                    level=level,
+                    parent_clause=parent_clause,
+                    page_start=page_num,
+                )
+
+                clauses.append(clause_info)
+
+        # Sort clauses by clause number
+        clauses.sort(key=lambda c: self._clause_sort_key(c.clause_number))
+
+        logger.info(f"Extracted {len(clauses)} clauses")
+        return clauses
+
+    def _find_page_for_position(self, position: int, page_texts: Dict[int, str]) -> Optional[int]:
+        """Find which page a text position corresponds to.
+
+        Args:
+            position: Character position in full text
+            page_texts: Dictionary of page texts
+
+        Returns:
+            Page number or None
+        """
+        current_pos = 0
+        for page_num in sorted(page_texts.keys()):
+            page_text = page_texts[page_num]
+            if current_pos <= position < current_pos + len(page_text):
+                return page_num
+            current_pos += len(page_text) + 2  # Account for \n\n separator
+
+        return None
+
+    def _clause_sort_key(self, clause_num: str) -> Tuple[int, ...]:
+        """Generate sort key for clause number.
+
+        Args:
+            clause_num: Clause number string (e.g., '4.2.1')
+
+        Returns:
+            Tuple of integers for sorting
+        """
+        try:
+            return tuple(int(part) for part in clause_num.split("."))
+        except ValueError:
+            return (0,)
+
+    def extract_clause_text(
+        self, full_text: str, clause_info: ClauseInfo, next_clause: Optional[ClauseInfo] = None
+    ) -> str:
+        """Extract text content for a specific clause.
+
+        Args:
+            full_text: Full document text
+            clause_info: Current clause information
+            next_clause: Next clause information (to determine boundary)
+
+        Returns:
+            Text content of the clause
+        """
+        # Find clause start
+        clause_pattern = re.escape(clause_info.clause_number)
+        if clause_info.title:
+            title_pattern = re.escape(clause_info.title[:50])  # Match first 50 chars
+            pattern = rf"{clause_pattern}\s+{title_pattern}"
+        else:
+            pattern = rf"^{clause_pattern}\s+"
+
+        match = re.search(pattern, full_text, re.MULTILINE)
+        if not match:
+            logger.warning(f"Could not find start of clause {clause_info.clause_number}")
+            return ""
+
+        start_pos = match.end()
+
+        # Find clause end (start of next clause or end of document)
+        end_pos = len(full_text)
+        if next_clause:
+            next_pattern = re.escape(next_clause.clause_number)
+            if next_clause.title:
+                next_title_pattern = re.escape(next_clause.title[:50])
+                next_search = rf"{next_pattern}\s+{next_title_pattern}"
+            else:
+                next_search = rf"^{next_pattern}\s+"
+
+            next_match = re.search(next_search, full_text[start_pos:], re.MULTILINE)
+            if next_match:
+                end_pos = start_pos + next_match.start()
+
+        clause_text = full_text[start_pos:end_pos].strip()
+        return clause_text

@@ -1,0 +1,112 @@
+# IEC PDF Ingestion Configuration
+
+# PDF Processing
+pdf:
+  # Extract images from PDFs
+  extract_images: false
+  # Extract tables
+  extract_tables: true
+  # Preserve layout
+  preserve_layout: true
+
+# Metadata Extraction
+metadata:
+  # Regex patterns for IEC standard identification
+  standard_patterns:
+    - 'IEC\s+(\d+(?:-\d+)*)'
+    - 'IEC\s+TR\s+(\d+(?:-\d+)*)'
+    - 'IEC\s+TS\s+(\d+(?:-\d+)*)'
+  # Edition patterns
+  edition_patterns:
+    - 'Edition\s+(\d+\.?\d*)'
+    - '(\d+)(?:st|nd|rd|th)\s+edition'
+  # Year patterns
+  year_patterns:
+    - '(\d{4})-(\d{2})'
+    - 'Copyright\s+©\s+(\d{4})'
+  # Clause patterns
+  clause_patterns:
+    - '^(\d+(?:\.\d+)*)\s+([A-Z].*)'
+    - '^Clause\s+(\d+(?:\.\d+)*):?\s+([A-Z].*)'
+
+# Chunking Strategy
+chunking:
+  # Strategy: 'recursive' or 'semantic'
+  strategy: 'recursive'
+  # Base chunk size (characters)
+  chunk_size: 1000
+  # Overlap between chunks (characters)
+  chunk_overlap: 200
+  # Clause-aware chunking (respect clause boundaries)
+  clause_aware: true
+  # Minimum chunk size
+  min_chunk_size: 100
+  # Maximum chunk size
+  max_chunk_size: 2000
+  # Semantic similarity threshold for semantic chunking
+  semantic_threshold: 0.7
+  # Embedding model for semantic chunking
+  embedding_model: 'sentence-transformers/all-MiniLM-L6-v2'
+
+# Q&A Generation
+qa_generation:
+  # Enable Q&A generation
+  enabled: true
+  # LLM provider: 'openai' or 'anthropic'
+  provider: 'anthropic'
+  # Model name
+  model: 'claude-3-haiku-20240307'
+  # Temperature for generation
+  temperature: 0.7
+  # Maximum questions per chunk
+  max_questions_per_chunk: 3
+  # Question types
+  question_types:
+    - 'factual'
+    - 'conceptual'
+    - 'application'
+  # System prompt template
+  system_prompt: |
+    You are an expert in IEC standards and solar PV systems.
+    Generate atomic, self-contained question-answer pairs from the given text.
+    Each question should be specific and answerable from the context alone.
+
+# Output Schema
+output:
+  # Output format: 'json' or 'jsonl'
+  format: 'json'
+  # Include metadata in output
+  include_metadata: true
+  # Include source text in output
+  include_source: true
+  # Include Q&A pairs in output
+  include_qa: true
+  # Pretty print JSON
+  pretty_print: true
+  # Output directory
+  output_dir: 'data/output'
+
+# Validation
+validation:
+  # Validate chunk count
+  check_chunk_count: true
+  # Validate metadata completeness
+  check_metadata: true
+  # Validate parsing accuracy
+  check_parsing: true
+  # Minimum metadata fields required
+  required_metadata_fields:
+    - 'standard_id'
+    - 'clause_number'
+    - 'chunk_id'
+  # Enable verbose validation output
+  verbose: true
+
+# Logging
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: 'INFO'
+  # Log file
+  log_file: 'logs/ingestion.log'
+  # Console output
+  console: true

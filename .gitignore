@@ -19,14 +19,12 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# Virtual environments
+# Virtual Environment
 venv/
 env/
 ENV/
-env.bak/
-venv.bak/
+.venv
 
 # IDE
 .vscode/
@@ -36,10 +34,34 @@ venv.bak/
 *~
 .DS_Store
 
-# Environment variables
+# Environment Variables
 .env
 .env.local
 .env.*.local
+
+# Logs
+logs/
+*.log
+log.txt
+
+# Data & Storage
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ChromaDB
+chroma/
+
+# Uploads
+uploads/
+
+# Models
+models/
+*.pth
+*.pt
+*.onnx
+*.h5
 
 # Testing
 .pytest_cache/
@@ -48,33 +70,18 @@ htmlcov/
 .tox/
 .hypothesis/
 
-# Data and vector stores
-data/
-*.db
-*.sqlite
-*.faiss
-*.pkl
-*.npy
-
-# Logs
-*.log
-logs/
-
-# Jupyter Notebook
+# Jupyter
 .ipynb_checkpoints
+*.ipynb
 
-# Model files
-models/
-*.pt
-*.pth
-*.bin
-*.safetensors
-
-# Documentation builds
-docs/_build/
+# Documentation
 site/
 
 # Temporary files
 tmp/
 temp/
 *.tmp
+
+# OS
+Thumbs.db
+.DS_Store

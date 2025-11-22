@@ -1,1 +1,1 @@
-"""Test suite for RAG engine."""
+"""Test package."""

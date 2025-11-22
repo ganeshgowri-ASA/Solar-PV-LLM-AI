@@ -20,13 +20,13 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual Environment
+# Virtual environments
 venv/
-env/
 ENV/
+env/
 .venv
 
-# IDEs
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -37,28 +37,52 @@ ENV/
 # Environment variables
 .env
 .env.local
-.env.*.local
 
-# Logs
-logs/
-*.log
+# Reports and outputs
+reports/*.pdf
+reports/*.html
+reports/*.json
+reports/*.png
 
-# Test coverage
+# Model cache
+.cache/
+*.pth
+*.pt
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing
+.pytest_cache/
 .coverage
 htmlcov/
-.pytest_cache/
 .tox/
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Logs
+*.log
+logs/
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Project specific
-*.db
-*.sqlite
+# Data
 data/
+*.csv
+*.xlsx
+
+# Images (except examples)
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tiff
+*.tif
+!examples/demo_images/*.jpg
+!examples/demo_images/*.png
+
+# Temporary files
+tmp/
 temp/
+*.tmp
+
+# OS
+Thumbs.db
+.DS_Store

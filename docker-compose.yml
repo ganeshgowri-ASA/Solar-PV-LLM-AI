@@ -1,138 +1,119 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: solar-pv-postgres
-    environment:
-      POSTGRES_USER: solar_user
-      POSTGRES_PASSWORD: solar_password
-      POSTGRES_DB: solar_pv_ai
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U solar_user"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - solar-pv-network
-
-  # Redis for Celery
-  redis:
-    image: redis:7-alpine
-    container_name: solar-pv-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - solar-pv-network
-
-  # Main API Application
-  api:
+  # Main Application
+  app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: solar-pv-api
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://solar_user:solar_password@postgres:5432/solar_pv_ai
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    container_name: solar-pv-llm-app
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app/backend
-      - ./data:/app/data
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - solar-pv-network
-    restart: unless-stopped
-
-  # Celery Worker
-  celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: solar-pv-celery-worker
-    env_file:
-      - .env
     environment:
-      DATABASE_URL: postgresql://solar_user:solar_password@postgres:5432/solar_pv_ai
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-    command: celery -A backend.services.celery_tasks worker --loglevel=info
+      - PROMETHEUS_ENABLED=true
+      - LANGCHAIN_TRACING_V2=${LANGCHAIN_TRACING_V2:-false}
+      - LANGCHAIN_API_KEY=${LANGCHAIN_API_KEY}
+      - LANGCHAIN_PROJECT=${LANGCHAIN_PROJECT:-solar-pv-llm-ai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4-turbo-preview}
     volumes:
-      - ./backend:/app/backend
+      - ./src:/app/src
       - ./data:/app/data
-    depends_on:
-      - postgres
-      - redis
     networks:
-      - solar-pv-network
+      - monitoring
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Celery Beat (Scheduler)
-  celery-beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: solar-pv-celery-beat
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://solar_user:solar_password@postgres:5432/solar_pv_ai
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-    command: celery -A backend.services.celery_tasks beat --loglevel=info
-    volumes:
-      - ./backend:/app/backend
-      - ./data:/app/data
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - solar-pv-network
-    restart: unless-stopped
-
-  # Flower (Celery Monitoring)
-  flower:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: solar-pv-flower
-    env_file:
-      - .env
-    environment:
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
-    command: celery -A backend.services.celery_tasks flower --port=5555
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: solar-pv-prometheus
     ports:
-      - "5555:5555"
-    depends_on:
-      - redis
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
     networks:
-      - solar-pv-network
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - app
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: solar-pv-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-data:/var/lib/grafana
+    networks:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # AlertManager - Alert Routing and Notification
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: solar-pv-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - monitoring
     restart: unless-stopped
 
-volumes:
-  postgres_data:
-  redis_data:
+  # Node Exporter - System Metrics
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: solar-pv-node-exporter
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring
+    restart: unless-stopped
 
 networks:
-  solar-pv-network:
+  monitoring:
     driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  alertmanager-data:

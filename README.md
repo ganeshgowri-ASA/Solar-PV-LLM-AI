@@ -1,368 +1,292 @@
-# Solar PV Multi-LLM Orchestrator
+# Solar PV LLM AI System
 
-An intelligent multi-LLM orchestration system for Solar PV queries that intelligently routes questions between GPT-4o and Claude 3.5 Sonnet based on query type and complexity.
+Repository for developing a comprehensive Solar PV AI LLM system with incremental training, RAG (Retrieval-Augmented Generation), citation management, and autonomous delivery. Built for broad audiences from beginners to experts.
+
+## Overview
+
+The Solar PV LLM AI System is designed to provide accurate, citation-backed answers to questions about solar photovoltaic systems, standards, and best practices. The system combines:
+
+- **RAG Architecture** - Retrieval-augmented generation for accurate, source-based responses
+- **Citation Management** - Automatic extraction, tracking, and formatting of citations
+- **Multi-Standard Support** - IEC, IEEE, ISO, ASTM, and other industry standards
+- **Flexible Citation Styles** - IEC, IEEE, and APA formatting
 
 ## Features
 
-- **Intelligent Query Classification**: Automatically classifies queries into 5 types:
-  - Standard Interpretation
-  - Calculation
-  - Image Analysis
-  - Technical Explanation
-  - Code Generation
+### Current Release (v0.1.0)
 
-- **Smart LLM Routing**: Routes queries to the most appropriate LLM based on:
-  - Query type and complexity
-  - Classification confidence
-  - User preferences
+#### ✅ Citation Management System
+- **Citation Tracker** - Sequential citation numbering with persistence options
+- **Metadata Extraction** - Automatic extraction of standard IDs, clause references, years, and titles
+- **Inline Citation Injection** - Smart injection of citation markers into LLM responses
+- **Multi-Format Support** - IEC, IEEE, and APA citation styles
+- **Reference Validation** - Validate citations and check for consistency
+- **Comprehensive Testing** - Full unit test coverage and QA verification
 
-- **Fallback & Hybrid Responses**:
-  - Automatic fallback to alternative LLM on failure
-  - Hybrid responses combining insights from multiple LLMs
-  - Intelligent response synthesis
+### Supported Standards
 
-- **Production-Ready API**: FastAPI-based REST API with:
-  - Comprehensive documentation (OpenAPI/Swagger)
-  - Health checks and monitoring
-  - CORS support
-  - Structured logging
-
-## Architecture
-
-```
-┌─────────────────┐
-│  User Query     │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Classifier     │ ──► Determines query type
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Router         │ ──► Selects appropriate LLM(s)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  LLM Clients    │ ──► GPT-4o / Claude 3.5
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Synthesizer    │ ──► Combines responses
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Final Response │
-└─────────────────┘
-```
+The system recognizes and extracts citations from:
+- **IEC** (International Electrotechnical Commission) - e.g., IEC 61215, IEC 61730
+- **ISO** (International Organization for Standardization) - e.g., ISO 9001
+- **IEEE** (Institute of Electrical and Electronics Engineers) - e.g., IEEE 1547
+- **ASTM** (American Society for Testing and Materials) - e.g., ASTM E1036
+- **EN** (European Standards) - e.g., EN 50530
+- **UL** (Underwriters Laboratories) - e.g., UL 1741
 
 ## Quick Start
 
 ### Installation
 
-1. Clone the repository:
 ```bash
+# Clone the repository
 git clone https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI.git
 cd Solar-PV-LLM-AI
-```
 
-2. Install dependencies:
-```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Install in development mode
+pip install -e .
 ```
 
-3. Configure environment variables:
-```bash
-cp .env.example .env
-# Edit .env and add your API keys
-```
-
-### Configuration
-
-Edit `.env` file:
-```env
-# API Keys (required)
-OPENAI_API_KEY=your_openai_api_key_here
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-
-# Model Configuration
-GPT_MODEL=gpt-4o
-CLAUDE_MODEL=claude-3-5-sonnet-20241022
-
-# Orchestrator Configuration
-DEFAULT_LLM=auto                    # auto, gpt, or claude
-ENABLE_FALLBACK=true               # Enable automatic fallback
-ENABLE_HYBRID_SYNTHESIS=true       # Enable hybrid responses
-CLASSIFICATION_THRESHOLD=0.7       # Confidence threshold
-
-# Server Configuration
-HOST=0.0.0.0
-PORT=8000
-LOG_LEVEL=INFO
-```
-
-### Running the Service
-
-Start the orchestrator service:
-```bash
-python main.py
-```
-
-The API will be available at `http://localhost:8000`
-
-Access the interactive API documentation at:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-
-## Usage
-
-### API Endpoints
-
-#### POST `/api/v1/query`
-Process a query through the orchestrator.
-
-**Request:**
-```json
-{
-  "query": "Calculate the energy yield for a 10kW solar system in California",
-  "query_type": "calculation",
-  "max_tokens": 2000,
-  "temperature": 0.7
-}
-```
-
-**Response:**
-```json
-{
-  "response": "Detailed calculation response...",
-  "primary_llm": "gpt",
-  "query_type": "calculation",
-  "classification_confidence": 0.92,
-  "is_hybrid": false,
-  "fallback_used": false,
-  "total_latency_ms": 1234.56
-}
-```
-
-#### GET `/api/v1/health`
-Check service health status.
-
-#### GET `/api/v1/models`
-List available models and configuration.
-
-#### GET `/api/v1/query-types`
-List supported query types with examples.
-
-### Python Client Example
+### Basic Usage
 
 ```python
-import httpx
-import asyncio
+from citations import CitationManager, RetrievedDocument
 
-async def query_orchestrator(query: str):
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "http://localhost:8000/api/v1/query",
-            json={
-                "query": query,
-                "max_tokens": 2000,
-                "temperature": 0.7
-            }
-        )
-        return response.json()
+# Initialize citation manager
+manager = CitationManager()
 
-# Example usage
-result = asyncio.run(query_orchestrator(
-    "How does MPPT tracking work in solar inverters?"
-))
-print(result["response"])
+# Sample LLM response
+llm_response = "Solar modules must meet IEC 61215 testing standards."
+
+# Sample retrieved documents from RAG
+retrieved_docs = [
+    RetrievedDocument(
+        content="IEC 61215 defines testing requirements for PV modules.",
+        metadata={
+            'standard_id': 'IEC 61215',
+            'title': 'Terrestrial PV modules - Design qualification',
+            'year': '2021',
+            'clause': 'Clause 5.2'
+        },
+        doc_id="doc_1",
+        score=0.9
+    )
+]
+
+# Process response with citations
+processed_response, citations = manager.process_response(
+    llm_response,
+    retrieved_docs,
+    inject_citations=True
+)
+
+# Format references in IEC style
+references = manager.format_references(style='iec')
+
+print(processed_response)  # "Solar modules must meet IEC 61215[1] testing standards."
+print(references)
+# References
+# ==================================================
+# [1] IEC 61215, "Terrestrial PV modules - Design qualification", 2021, Clause 5.2.
 ```
 
-### cURL Example
+## Running Tests
 
-```bash
-curl -X POST "http://localhost:8000/api/v1/query" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "Calculate ROI for a 20kW commercial solar installation",
-    "query_type": "calculation"
-  }'
-```
-
-## Query Types
-
-### 1. Standard Interpretation
-General questions about solar PV systems.
-
-**Examples:**
-- "What is a solar inverter?"
-- "Explain how solar panels work"
-
-### 2. Calculation
-Numerical calculations and system sizing.
-
-**Examples:**
-- "Calculate energy yield for a 10kW system"
-- "Size inverter for 20 panels of 400W each"
-
-### 3. Image Analysis
-Visual inspection and analysis (requires image data).
-
-**Examples:**
-- "Analyze this thermal image of solar panels"
-- "Inspect this PV array layout"
-
-### 4. Technical Explanation
-Detailed technical explanations.
-
-**Examples:**
-- "How does MPPT tracking work?"
-- "Explain the physics of the photovoltaic effect"
-
-### 5. Code Generation
-Generate code for PV simulations and analysis.
-
-**Examples:**
-- "Write Python code to calculate shading losses"
-- "Generate a PV system simulation script"
-
-## Testing
-
-Run the test suite:
+### Unit Tests
 
 ```bash
 # Run all tests
-pytest
+pytest tests/ -v
+
+# Run citation tests only
+pytest tests/test_citations/ -v
 
 # Run with coverage
-pytest --cov=src/orchestrator --cov-report=html
-
-# Run specific test categories
-pytest tests/unit/
-pytest tests/integration/
+pytest tests/ --cov=src --cov-report=html
 ```
+
+### QA Verification
+
+```bash
+# Run comprehensive QA verification
+python tests/qa_verification.py
+```
+
+This will verify:
+- Citation extraction accuracy
+- Multiple citation format support
+- Clause reference extraction
+- Citation number persistence
+- Real-world scenario handling
 
 ## Project Structure
 
 ```
 Solar-PV-LLM-AI/
-├── src/
-│   └── orchestrator/
+├── README.md                    # This file
+├── requirements.txt             # Python dependencies
+├── setup.py                     # Package configuration
+├── pytest.ini                   # Pytest configuration
+├── .gitignore                   # Git ignore rules
+│
+├── src/                         # Source code
+│   ├── __init__.py
+│   ├── citations/               # Citation management module
+│   │   ├── __init__.py
+│   │   ├── README.md           # Citation module documentation
+│   │   ├── citation_manager.py  # Main orchestration
+│   │   ├── citation_extractor.py # Metadata extraction
+│   │   ├── citation_injector.py  # Inline citation injection
+│   │   ├── citation_formatter.py # Multi-format support
+│   │   └── reference_manager.py  # Reference validation
+│   │
+│   ├── retrieval/               # RAG components (planned)
+│   ├── llm/                     # LLM integration (planned)
+│   └── utils/                   # Utility functions
+│
+├── tests/                       # Test suite
+│   ├── __init__.py
+│   ├── qa_verification.py      # QA verification script
+│   └── test_citations/         # Citation tests
 │       ├── __init__.py
-│       ├── config.py              # Configuration management
-│       ├── models.py              # Data models
-│       ├── service.py             # Main orchestrator service
-│       ├── clients/               # LLM API clients
-│       │   ├── base.py
-│       │   ├── gpt_client.py
-│       │   └── claude_client.py
-│       ├── classifier/            # Query classification
-│       │   └── semantic_classifier.py
-│       ├── router/                # LLM routing logic
-│       │   └── llm_router.py
-│       ├── synthesizer/           # Response synthesis
-│       │   └── response_synthesizer.py
-│       ├── prompts/               # Prompt templates
-│       │   └── templates.py
-│       └── api/                   # REST API
-│           └── app.py
-├── tests/
-│   ├── unit/                      # Unit tests
-│   └── integration/               # Integration tests
-├── main.py                        # Application entry point
-├── requirements.txt               # Python dependencies
-├── .env.example                   # Environment template
-└── README.md                      # This file
+│       ├── test_citation_manager.py
+│       ├── test_citation_extractor.py
+│       ├── test_citation_injector.py
+│       ├── test_citation_formatter.py
+│       └── test_reference_manager.py
+│
+├── data/                        # Data storage
+│   ├── raw/                    # Original documents
+│   ├── processed/              # Processed documents
+│   └── vector_db/              # Vector database
+│
+├── config/                      # Configuration files
+└── notebooks/                   # Jupyter notebooks
 ```
 
-## Advanced Features
+## Citation Formats
 
-### Hybrid Responses
-
-Enable hybrid mode to get responses from both LLMs for complex queries:
-
-```json
-{
-  "query": "Comprehensive analysis of monocrystalline vs polycrystalline panels",
-  "preferred_llm": "hybrid"
-}
+### IEC Style (Default)
+```
+[1] IEC 61215-1, "Terrestrial photovoltaic (PV) modules - Design qualification and type approval - Part 1", 2021, Clause 5.2.
 ```
 
-### Explicit LLM Selection
-
-Override automatic routing:
-
-```json
-{
-  "query": "Your question here",
-  "preferred_llm": "claude"  // or "gpt"
-}
+### IEEE Style
+```
+[1] "Terrestrial photovoltaic (PV) modules - Design qualification and type approval - Part 1," IEC 61215-1, 2021, sec. 5.2.
 ```
 
-### Image Analysis
-
-Include base64-encoded images:
-
-```json
-{
-  "query": "Analyze defects in this thermal image",
-  "image_data": "base64_encoded_image_data_here"
-}
+### APA Style
+```
+[1] International Electrotechnical Commission. (2021). Terrestrial photovoltaic (PV) modules - Design qualification and type approval - Part 1. (IEC 61215-1).
 ```
 
-## Monitoring & Logging
+## Documentation
 
-The service uses structured logging with different levels:
-- INFO: Normal operations
-- WARNING: Potential issues
-- ERROR: Errors and failures
+- [Citation Manager Documentation](src/citations/README.md) - Comprehensive guide to the citation system
+- [Testing Guide](tests/test_citations/) - Unit test documentation
+- [QA Verification](tests/qa_verification.py) - QA test scenarios
 
-Logs include:
-- Request/response timing
-- Classification results
-- Routing decisions
-- LLM interactions
-- Error traces
+## Development Roadmap
 
-## Performance
+### Phase 1: Citation Management ✅ (Current)
+- [x] Citation tracker with sequential numbering
+- [x] Metadata extraction (standards, clauses, years)
+- [x] Inline citation injection
+- [x] Multiple citation formats (IEC, IEEE, APA)
+- [x] Reference validation
+- [x] Comprehensive unit tests
+- [x] QA verification
 
-Typical response times:
-- Simple queries: 1-3 seconds
-- Complex calculations: 2-5 seconds
-- Image analysis: 3-7 seconds
-- Hybrid responses: 4-8 seconds
+### Phase 2: Document Processing (Planned)
+- [ ] PDF parsing and extraction
+- [ ] Text chunking for RAG
+- [ ] Metadata extraction from documents
+- [ ] Document preprocessing pipeline
 
-## Roadmap
+### Phase 3: RAG Implementation (Planned)
+- [ ] Vector database integration
+- [ ] Embedding generation
+- [ ] Semantic search
+- [ ] Relevance ranking
+- [ ] Context window management
 
-- [ ] RAG integration for Solar PV knowledge base
-- [ ] Citation tracking and source attribution
-- [ ] Streaming responses
+### Phase 4: LLM Integration (Planned)
+- [ ] OpenAI integration
+- [ ] Anthropic integration
+- [ ] Prompt engineering
+- [ ] Response generation
+- [ ] Context-aware responses
+
+### Phase 5: Advanced Features (Planned)
 - [ ] Multi-language support
-- [ ] Enhanced metrics and analytics
-- [ ] Cost optimization and caching
+- [ ] Incremental learning
+- [ ] User feedback integration
+- [ ] Web interface
+- [ ] API endpoints
 
 ## Contributing
 
-Contributions are welcome! Please:
+We welcome contributions! Here's how to get started:
+
 1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for new functionality
+5. Run the test suite (`pytest tests/ -v`)
+6. Run QA verification (`python tests/qa_verification.py`)
+7. Commit your changes (`git commit -m 'Add amazing feature'`)
+8. Push to the branch (`git push origin feature/amazing-feature`)
+9. Open a Pull Request
+
+### Coding Standards
+
+- Follow PEP 8 style guidelines
+- Add docstrings to all functions and classes
+- Include type hints where appropriate
+- Write unit tests for new features
+- Update documentation as needed
+
+## Testing Philosophy
+
+All code must include:
+1. **Unit tests** - Test individual components
+2. **Integration tests** - Test component interactions
+3. **QA verification** - Test real-world scenarios
+4. **Documentation** - Clear usage examples
 
 ## License
 
-MIT License - see LICENSE file for details
-
-## Support
-
-For issues and questions:
-- GitHub Issues: https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI/issues
-- Documentation: See `/docs` endpoint
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
-Built for the Solar PV AI project to provide intelligent, context-aware responses for users ranging from beginners to experts.
+- International Electrotechnical Commission (IEC) for standardization
+- Solar PV industry standards organizations
+- Open-source AI and ML communities
+
+## Contact
+
+For questions, issues, or contributions:
+- GitHub Issues: [Solar-PV-LLM-AI/issues](https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI/issues)
+- Repository: [Solar-PV-LLM-AI](https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI)
+
+## Version History
+
+### v0.1.0 (Current)
+- Initial release
+- Citation management system
+- Support for IEC, IEEE, ISO, ASTM, EN, and UL standards
+- IEC, IEEE, and APA citation formatting
+- Comprehensive test suite
+- QA verification script
+
+---
+
+**Built for the Solar PV community** - From beginners to experts, this system aims to provide accurate, citation-backed information about solar photovoltaic technologies.

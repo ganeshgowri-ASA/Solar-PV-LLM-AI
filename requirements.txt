@@ -1,28 +1,22 @@
+# Solar PV LLM AI System - Requirements
+
 # Core dependencies
-python-dotenv==1.0.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
+pytest>=7.4.0              # Testing framework
+pytest-cov>=4.1.0          # Test coverage
 
-# API clients
-openai==1.12.0
-anthropic==0.18.1
+# For future RAG implementation
+# openai>=1.0.0            # OpenAI API
+# anthropic>=0.8.0         # Anthropic API
+# chromadb>=0.4.0          # Vector database
+# langchain>=0.1.0         # LLM framework
+# sentence-transformers>=2.2.0  # Embeddings
 
-# Web framework
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-
-# ML/NLP for classification
-sentence-transformers==2.3.1
-scikit-learn==1.4.0
-numpy==1.26.3
+# PDF and document processing (for future use)
+# pypdf2>=3.0.0            # PDF parsing
+# python-docx>=0.8.11      # Word document parsing
+# beautifulsoup4>=4.12.0   # HTML parsing
+# lxml>=4.9.0              # XML/HTML parsing
 
 # Utilities
-httpx==0.26.0
-tenacity==8.2.3
-loguru==0.7.2
-
-# Testing
-pytest==7.4.4
-pytest-asyncio==0.23.3
-pytest-cov==4.1.0
-httpx==0.26.0
+python-dotenv>=1.0.0       # Environment variables
+pyyaml>=6.0                # YAML configuration

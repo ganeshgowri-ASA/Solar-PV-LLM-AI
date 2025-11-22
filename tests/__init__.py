@@ -1,1 +1,1 @@
-"""Test suite for the LLM orchestrator."""
+"""Tests for Solar PV LLM AI system."""

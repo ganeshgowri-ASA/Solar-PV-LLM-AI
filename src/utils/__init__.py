@@ -1,1 +1,1 @@
-"""Utilities module for Solar PV LLM AI"""
+"""Utility functions and helpers for Solar PV LLM AI."""

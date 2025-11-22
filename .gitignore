@@ -16,15 +16,24 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual Environment
 venv/
 env/
 ENV/
-.venv
+env.bak/
+venv.bak/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
@@ -34,48 +43,30 @@ ENV/
 *~
 .DS_Store
 
-# Environment Variables
-.env
-.env.local
-.env.*.local
-
-# Logs
-logs/
-*.log
-log.txt
-
-# Data & Storage
-data/
-*.db
-*.sqlite
-*.sqlite3
-
-# ChromaDB
-chroma/
-
-# Uploads
-uploads/
-
-# Models
-models/
-*.pth
-*.pt
-*.onnx
-*.h5
+# Streamlit
+.streamlit/secrets.toml
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
-.tox/
+*.cover
 .hypothesis/
 
-# Jupyter
+# Jupyter Notebook
 .ipynb_checkpoints
-*.ipynb
 
 # Documentation
-site/
+docs/_build/
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
 # Temporary files
 tmp/
@@ -85,3 +76,9 @@ temp/
 # OS
 Thumbs.db
 .DS_Store
+
+# Project specific
+uploaded_files/
+cache/
+*.pkl
+*.pickle

@@ -1,435 +1,458 @@
-# Solar PV LLM AI
+# Solar PV LLM AI System
 
-> **Advanced Solar PV AI System** with RAG, LLM orchestration, defect detection, and performance analytics.
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.31.0-FF4B4B)](https://streamlit.io/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-A comprehensive FastAPI-based backend system for solar photovoltaic analysis, combining AI-powered chat assistance, computer vision for defect detection, performance calculations, and document-based knowledge retrieval.
+**An AI-powered technical assistant for solar PV systems with RAG, citation-backed responses, and comprehensive analysis tools.**
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green.svg)](https://fastapi.tiangolo.com/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
----
-
-## 🌟 Features
-
-### 🤖 AI-Powered Chat with RAG
-- **Retrieval Augmented Generation (RAG)** for context-aware responses
-- Integration with **OpenAI GPT-4** and **Anthropic Claude**
-- Automatic source citation and bibliography generation
-- Conversation history support
-- Token usage tracking
-
-### 📊 PV Performance Calculations
-- Energy output estimation (daily, monthly, annual)
-- Performance ratio calculation
-- Optimal tilt angle determination
-- Financial payback analysis
-- Peak sun hours calculation
-- System capacity factor analysis
-
-### 🔍 Defect Detection & Image Analysis
-- **8 defect types** detection:
-  - Hotspots (thermal anomalies)
-  - Cracks and micro-cracks
-  - Delamination
-  - Discoloration
-  - Soiling
-  - Snail trails
-  - PID (Potential Induced Degradation)
-  - Bypass diode failures
-- Overall health scoring
-- Automated maintenance recommendations
-
-### 📚 Document Ingestion & Knowledge Base
-- Support for **PDF, DOCX, TXT** formats
-- Automatic text extraction and chunking
-- Vector embeddings with **ChromaDB**
-- Real-time processing status tracking
-- Semantic search capabilities
-
-### 🛡️ Production-Ready Features
-- **Token-based authentication** (API Key + JWT)
-- **CORS** middleware configuration
-- **Prometheus metrics** integration
-- Structured **logging** with Loguru
-- Comprehensive **API documentation** (Swagger UI)
-- **Health checks** for all services
-- Request/response validation with Pydantic
+Repository for developing Solar PV AI LLM system with incremental training, RAG (Retrieval-Augmented Generation), citation support, and autonomous delivery. Built for broad audiences from beginners to experts.
 
 ---
 
-## 🚀 Quick Start
+## Features
+
+### 🤖 AI Chat Assistant
+- **Conversational AI** powered by GPT-4 for technical Q&A
+- **RAG (Retrieval-Augmented Generation)** for accurate, source-backed answers
+- **Citation System** with page numbers, sections, and relevance scores
+- **Context-aware responses** about IEC standards, testing, and best practices
+- **Export chat history** for documentation and reporting
+
+### 🔍 Advanced Search
+- **Filter by category**: Module Testing, Safety, Performance, Systems, Measurements
+- **Difficulty levels**: Beginner, Intermediate, Advanced
+- **Multiple view modes**: Cards, List, Table
+- **Export results** as CSV for further analysis
+- **Related standards** discovery
+
+### 🧮 Professional Calculators
+- **Energy Yield Calculator**: Estimate daily, monthly, and annual production
+- **System Sizing Calculator**: Determine optimal system size and panel count
+- **ROI Calculator**: Calculate payback period and 25-year returns
+- **Efficiency Calculator**: Analyze module and system efficiency
+- **Shading Analysis**: Estimate losses from shading throughout the day
+
+### 🔬 Image Analysis
+- **AI-powered defect detection**: Micro-cracks, hot-spots, discoloration
+- **Thermal anomaly identification**: Hot-spots, bypass diode issues
+- **Performance assessment**: Estimated power loss calculations
+- **Automated recommendations** for maintenance and repairs
+- **Downloadable reports** with detailed findings
+
+### 📚 Standards Library
+- **Comprehensive IEC standards database**
+- **Detailed section breakdowns** for each standard
+- **Related standards** cross-referencing
+- **AI question capability** for standard-specific queries
+- **Version tracking** and status information
+
+### 📊 Dashboard Analytics
+- **System health monitoring**: Uptime, response times, active queries
+- **Usage statistics**: Query volume, success rates, performance trends
+- **Knowledge base metrics**: Document count, index size, last update
+- **Time series visualizations**: 30-day performance trends
+- **Activity logs** and real-time monitoring
+
+---
+
+## Installation
 
 ### Prerequisites
-
-- Python 3.10 or higher
+- Python 3.8 or higher
 - pip package manager
-- (Optional) OpenAI API key
-- (Optional) Anthropic API key
+- Git (for cloning the repository)
 
-### Installation
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI.git
+cd Solar-PV-LLM-AI
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-org/Solar-PV-LLM-AI.git
-   cd Solar-PV-LLM-AI
-   ```
+### Step 2: Create Virtual Environment (Recommended)
+```bash
+# Create virtual environment
+python -m venv venv
 
-2. **Create virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+# Activate on Windows
+venv\Scripts\activate
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Activate on macOS/Linux
+source venv/bin/activate
+```
 
-4. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your API keys
-   ```
+### Step 3: Install Dependencies
+```bash
+pip install -r requirements.txt
+```
 
-5. **Run the application**
-   ```bash
-   python run.py
-   ```
+### Step 4: Configure Environment Variables
+```bash
+# Copy the example environment file
+cp .env.example .env
 
-6. **Access the API**
-   - **Swagger UI**: http://localhost:8000/docs
-   - **ReDoc**: http://localhost:8000/redoc
-   - **Health Check**: http://localhost:8000/health
+# Edit .env and add your API keys
+# Required: OPENAI_API_KEY
+```
+
+### Step 5: Run the Application
+```bash
+streamlit run app.py
+```
+
+The application will open in your default browser at `http://localhost:8501`
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Solar-PV-LLM-AI/
-├── app/
-│   ├── api/
-│   │   └── endpoints/
-│   │       ├── chat.py              # RAG-enhanced chat endpoint
-│   │       ├── pv_calculations.py   # PV performance calculations
-│   │       ├── image_analysis.py    # Defect detection
-│   │       ├── documents.py         # Document ingestion
-│   │       └── health.py            # Health & metrics
-│   ├── core/
-│   │   ├── config.py                # Configuration management
-│   │   └── security.py              # Authentication & JWT
-│   ├── middleware/
-│   │   ├── logging.py               # Logging middleware
-│   │   └── metrics.py               # Prometheus metrics
-│   ├── models/
-│   │   └── schemas.py               # Pydantic models
-│   ├── services/
-│   │   ├── rag_engine.py            # RAG implementation
-│   │   ├── llm_orchestrator.py      # LLM integration
-│   │   ├── citation_manager.py      # Citation handling
-│   │   ├── pv_calculator.py         # PV calculations
-│   │   ├── image_analyzer.py        # Image analysis
-│   │   └── document_ingestion.py    # Document processing
-│   └── main.py                      # FastAPI application
-├── tests/
-│   ├── api/
-│   │   ├── test_chat.py
-│   │   ├── test_pv_calculations.py
-│   │   ├── test_image_analysis.py
-│   │   └── test_health.py
-│   └── conftest.py
-├── config/                          # Configuration files
-├── data/                            # Data storage
-│   ├── chroma/                      # Vector database
-│   └── uploads/                     # Uploaded files
-├── logs/                            # Application logs
-├── .env.example                     # Environment template
-├── requirements.txt                 # Python dependencies
-├── pytest.ini                       # Test configuration
-├── run.py                          # Application runner
-├── API_DOCUMENTATION.md            # Detailed API docs
-└── README.md                       # This file
+├── app.py                          # Main Streamlit application
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment variables template
+├── README.md                       # This file
+│
+├── frontend/                       # Frontend application
+│   ├── pages/                      # Page modules
+│   │   ├── chat_page.py           # AI chat interface
+│   │   ├── search_page.py         # Advanced search
+│   │   ├── calculators_page.py    # Solar calculators
+│   │   ├── image_analysis_page.py # Image analysis
+│   │   ├── standards_library_page.py # Standards browser
+│   │   └── dashboard_page.py      # Analytics dashboard
+│   │
+│   ├── components/                 # Reusable UI components
+│   │
+│   └── utils/                      # Utility functions
+│       ├── ui_components.py       # UI helper components
+│       └── styles.py              # Custom CSS styles
+│
+├── backend/                        # Backend services
+│   ├── api/                        # API services
+│   │   └── mock_service.py        # Mock API (for development)
+│   │
+│   └── models/                     # Data models
+│
+├── config/                         # Configuration
+│   └── settings.py                # Application settings
+│
+├── tests/                          # Test suite
+│
+├── docs/                           # Documentation
+│
+└── assets/                         # Static assets
 ```
 
 ---
 
-## 🔧 Configuration
+## Usage Guide
 
-### Environment Variables (.env)
+### Chat Interface
+1. Navigate to **Chat** from the sidebar
+2. Type your question in the chat input
+3. View AI response with sources and citations
+4. Click on expandable sections to see source details
+5. Use suggested questions for quick queries
+6. Export chat history for documentation
 
-```env
-# Application
-APP_NAME=Solar PV LLM AI
+### Advanced Search
+1. Navigate to **Search** from the sidebar
+2. Enter search keywords
+3. Apply filters (category, difficulty, test types)
+4. Choose view mode (Cards, List, or Table)
+5. Click "View Details" to see full standard information
+6. Export results as CSV
+
+### Calculators
+1. Navigate to **Calculators** from the sidebar
+2. Select the calculator tab you need
+3. Enter your parameters
+4. Click "Calculate" to see results
+5. View interactive charts and visualizations
+6. Adjust parameters to see real-time updates
+
+### Image Analysis
+1. Navigate to **Image Analysis** from the sidebar
+2. Upload a solar panel image (PNG, JPG, etc.)
+3. Select analysis type (Comprehensive, Visual, Thermal, or Performance)
+4. Click "Start Analysis"
+5. Review detected defects and recommendations
+6. Download the analysis report
+
+### Standards Library
+1. Navigate to **Standards Library** from the sidebar
+2. Browse by category or view all standards
+3. Click "View Details" for in-depth information
+4. Explore sections and related standards
+5. Ask AI questions about specific standards
+6. Download standard summaries
+
+### Dashboard
+1. Navigate to **Dashboard** from the sidebar
+2. View real-time system health metrics
+3. Monitor usage statistics and trends
+4. Analyze 30-day performance charts
+5. Check recent activity logs
+6. Export metrics and reports
+
+---
+
+## Configuration
+
+### Environment Variables
+
+Edit `.env` file to configure:
+
+```bash
+# OpenAI Configuration
+OPENAI_API_KEY=your_api_key_here
+
+# Application Settings
+APP_NAME=Solar PV LLM AI System
 APP_VERSION=1.0.0
-DEBUG=True
-ENVIRONMENT=development
+DEBUG_MODE=False
 
-# Server
-HOST=0.0.0.0
-PORT=8000
+# Backend API
+BACKEND_URL=http://localhost:8000
+API_TIMEOUT=30
 
-# Security
-SECRET_KEY=your-secret-key-change-in-production
-API_KEY=your-api-key
+# File Upload Settings
+MAX_FILE_SIZE_MB=10
+ALLOWED_EXTENSIONS=pdf,docx,pptx,png,jpg,jpeg
 
-# OpenAI
-OPENAI_API_KEY=sk-your-openai-key
-OPENAI_MODEL=gpt-4-turbo-preview
-
-# Anthropic
-ANTHROPIC_API_KEY=sk-ant-your-key
-
-# Vector Database
-CHROMA_PERSIST_DIRECTORY=./data/chroma
-CHROMA_COLLECTION_NAME=solar_pv_documents
-
-# RAG
-MAX_RETRIEVAL_RESULTS=5
+# RAG Settings
+EMBEDDING_MODEL=all-MiniLM-L6-v2
 CHUNK_SIZE=1000
 CHUNK_OVERLAP=200
-```
 
-See `.env.example` for all available configuration options.
+# LLM Settings
+DEFAULT_MODEL=gpt-4-turbo-preview
+TEMPERATURE=0.7
+MAX_TOKENS=2000
+```
 
 ---
 
-## 📖 API Usage
+## Technology Stack
 
-### Authentication
+### Frontend
+- **Streamlit**: Interactive web application framework
+- **Plotly**: Interactive data visualizations
+- **Pandas**: Data manipulation and analysis
+- **streamlit-option-menu**: Enhanced navigation menu
 
-All API endpoints require authentication via API key:
+### AI/ML
+- **OpenAI GPT-4**: Language model for chat
+- **LangChain**: RAG framework
+- **Sentence Transformers**: Text embeddings
+- **FAISS**: Vector similarity search
 
+### Backend
+- **Python**: Core programming language
+- **Requests/HTTPX**: HTTP client libraries
+
+### Image Processing
+- **Pillow**: Image manipulation
+- **OpenCV**: Computer vision
+
+---
+
+## Development
+
+### Running Tests
+```bash
+pytest tests/ -v --cov
+```
+
+### Code Formatting
+```bash
+black .
+flake8 .
+```
+
+### Adding New Features
+
+1. Create new page module in `frontend/pages/`
+2. Add route in `app.py`
+3. Add navigation item in sidebar
+4. Implement page rendering logic
+5. Test and document
+
+---
+
+## API Integration
+
+The application uses a mock API service for development. To integrate with a real backend:
+
+1. Replace `backend/api/mock_service.py` with real API client
+2. Update `BACKEND_URL` in `.env`
+3. Implement authentication if required
+4. Handle API rate limiting and errors
+
+Example API client structure:
 ```python
-import requests
+class RealAPIService:
+    def __init__(self, base_url, api_key):
+        self.base_url = base_url
+        self.api_key = api_key
 
-headers = {"X-API-Key": "your-api-key"}
-response = requests.post(
-    "http://localhost:8000/chat/",
-    headers=headers,
-    json={"query": "What is solar panel efficiency?"}
-)
-```
-
-### Example: Chat with RAG
-
-```python
-import requests
-
-response = requests.post(
-    "http://localhost:8000/chat/",
-    headers={"X-API-Key": "your-api-key"},
-    json={
-        "query": "How do I optimize solar panel tilt angle?",
-        "use_rag": True,
-        "max_tokens": 500
-    }
-)
-
-data = response.json()
-print(f"Response: {data['response']}")
-print(f"Citations: {len(data['citations'])}")
-```
-
-### Example: PV Output Estimation
-
-```python
-response = requests.post(
-    "http://localhost:8000/pv/estimate-output",
-    headers={"X-API-Key": "your-api-key"},
-    json={
-        "panel_capacity_kw": 5.0,
-        "panel_efficiency": 0.2,
-        "system_losses": 0.14,
-        "tilt_angle": 37.0,
-        "azimuth_angle": 180.0,
-        "location_lat": 37.7749,
-        "location_lon": -122.4194
-    }
-)
-
-print(f"Annual Output: {response.json()['annual_energy_kwh']} kWh")
-```
-
-### Example: Image Analysis
-
-```python
-import base64
-
-with open("panel_image.jpg", "rb") as f:
-    image_base64 = base64.b64encode(f.read()).decode()
-
-response = requests.post(
-    "http://localhost:8000/image-analysis/analyze",
-    headers={"X-API-Key": "your-api-key"},
-    json={"image_base64": image_base64}
-)
-
-data = response.json()
-print(f"Health Score: {data['overall_health_score']}")
-print(f"Defects Found: {len(data['defects'])}")
-```
-
-See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for complete API reference.
-
----
-
-## 🧪 Testing
-
-Run the test suite:
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=app --cov-report=html
-
-# Run specific test file
-pytest tests/api/test_chat.py
-
-# Run with verbose output
-pytest -v
+    def chat_completion(self, message, include_sources=True):
+        # Implement real API call
+        pass
 ```
 
 ---
 
-## 📊 Monitoring
+## Deployment
 
-### Health Check
+### Streamlit Cloud
+1. Push code to GitHub
+2. Connect repository to Streamlit Cloud
+3. Add secrets in Streamlit dashboard
+4. Deploy
 
+### Docker
 ```bash
-curl http://localhost:8000/health
-```
-
-### Prometheus Metrics
-
-```bash
-curl http://localhost:8000/metrics
-```
-
-Metrics include:
-- HTTP request counts and durations
-- Active request gauge
-- Custom application metrics
-
----
-
-## 🛠️ Development
-
-### Running in Development Mode
-
-```bash
-# With auto-reload
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# Or use the run script
-python run.py
-```
-
-### Code Quality
-
-```bash
-# Format code
-black app/ tests/
-
-# Lint
-flake8 app/ tests/
-
-# Type checking
-mypy app/
-```
-
----
-
-## 📚 Architecture
-
-### Services Overview
-
-1. **RAG Engine** (`rag_engine.py`)
-   - ChromaDB vector database
-   - Sentence transformers for embeddings
-   - Semantic search and retrieval
-
-2. **LLM Orchestrator** (`llm_orchestrator.py`)
-   - OpenAI/Anthropic integration
-   - Prompt engineering
-   - Token counting and management
-
-3. **Citation Manager** (`citation_manager.py`)
-   - Multiple citation formats (APA, MLA, Chicago, IEEE)
-   - Deduplication and ranking
-   - Bibliography generation
-
-4. **PV Calculator** (`pv_calculator.py`)
-   - Energy output estimation
-   - Performance ratio calculation
-   - Financial analysis
-
-5. **Image Analyzer** (`image_analyzer.py`)
-   - Computer vision preprocessing
-   - Defect detection (mock - ready for model integration)
-   - Health scoring
-
-6. **Document Processor** (`document_ingestion.py`)
-   - Multi-format support (PDF, DOCX, TXT)
-   - Text extraction and chunking
-   - Async processing
-
----
-
-## 🚀 Deployment
-
-### Docker (Coming Soon)
-
-```bash
+# Build image
 docker build -t solar-pv-ai .
-docker run -p 8000:8000 --env-file .env solar-pv-ai
+
+# Run container
+docker run -p 8501:8501 solar-pv-ai
 ```
 
-### Production Considerations
+### Manual Server
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
-- Use a production ASGI server (Gunicorn + Uvicorn workers)
-- Configure proper API keys and secrets
-- Set up SSL/TLS certificates
-- Implement rate limiting
-- Configure monitoring and alerting
-- Use a production-grade vector database
-- Deploy actual ML models for defect detection
+# Run with nohup
+nohup streamlit run app.py --server.port 8501 &
+```
 
 ---
 
-## 🤝 Contributing
+## Accessibility
 
-Contributions are welcome! Please:
+The application is built with accessibility in mind:
+
+- ✅ Keyboard navigation support
+- ✅ Screen reader compatible
+- ✅ High contrast color schemes
+- ✅ Responsive design for all devices
+- ✅ ARIA labels and semantic HTML
+- ✅ Focus indicators for interactive elements
+
+---
+
+## Browser Compatibility
+
+Tested and supported on:
+- Google Chrome (latest)
+- Mozilla Firefox (latest)
+- Safari (latest)
+- Microsoft Edge (latest)
+
+Mobile browsers:
+- iOS Safari
+- Chrome Mobile
+- Samsung Internet
+
+---
+
+## Performance
+
+### Optimization Features
+- Lazy loading of components
+- Caching of API responses
+- Efficient data serialization
+- Minimized re-renders
+- Compressed assets
+
+### Performance Targets
+- Initial load: < 2 seconds
+- Chat response: < 300ms
+- Search results: < 500ms
+- Image analysis: < 2 seconds
+
+---
+
+## Security
+
+### Best Practices Implemented
+- Environment variable for sensitive data
+- Input validation and sanitization
+- File upload size limits
+- HTTPS recommended for production
+- API key protection
+- CORS configuration
+
+---
+
+## Contributing
+
+We welcome contributions! Please follow these steps:
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License.
-
----
-
-## 🙏 Acknowledgments
-
-- Built with [FastAPI](https://fastapi.tiangolo.com/)
-- Vector storage with [ChromaDB](https://www.trychroma.com/)
-- LLM integration via [OpenAI](https://openai.com/) and [Anthropic](https://www.anthropic.com/)
-- Image processing with [OpenCV](https://opencv.org/) and [Pillow](https://python-pillow.org/)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 📧 Support
+## Support
 
-For questions, issues, or feature requests, please open an issue on GitHub or contact the development team.
+For questions, issues, or feature requests:
+
+- **GitHub Issues**: [Report a bug](https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI/issues)
+- **Documentation**: [Wiki](https://github.com/ganeshgowri-ASA/Solar-PV-LLM-AI/wiki)
+- **Email**: support@example.com
 
 ---
 
-**Happy Coding! ☀️⚡**
+## Acknowledgments
+
+- IEC standards for solar PV testing and certification
+- OpenAI for GPT-4 language model
+- Streamlit team for the amazing framework
+- Solar PV community for domain expertise
+
+---
+
+## Roadmap
+
+### Planned Features
+- [ ] Real-time collaboration
+- [ ] Multi-language support
+- [ ] Custom training on proprietary documents
+- [ ] Mobile app versions
+- [ ] Integration with testing equipment
+- [ ] Advanced analytics and reporting
+- [ ] User authentication and profiles
+- [ ] Team workspaces
+
+---
+
+## Version History
+
+### v1.0.0 (Current)
+- Initial release
+- AI chat with RAG and citations
+- Advanced search functionality
+- 5 professional calculators
+- Image analysis with defect detection
+- Standards library
+- Analytics dashboard
+- Responsive design
+- Comprehensive documentation
+
+---
+
+**Built with ❤️ for the Solar PV community**

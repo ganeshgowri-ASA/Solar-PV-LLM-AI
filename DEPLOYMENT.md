@@ -1,15 +1,16 @@
-# Solar PV LLM AI - Deployment Guide
+# Deployment Guide
 
-Complete deployment guide for containerized production deployment.
+Complete deployment guide for Solar-PV-LLM-AI platform.
 
 ## Table of Contents
 
-1. [Prerequisites](#prerequisites)
-2. [Local Development Setup](#local-development-setup)
-3. [Production Deployment](#production-deployment)
-4. [Monitoring & Observability](#monitoring--observability)
-5. [Backup & Disaster Recovery](#backup--disaster-recovery)
-6. [Troubleshooting](#troubleshooting)
+- [Prerequisites](#prerequisites)
+- [Local Development](#local-development)
+- [Docker Deployment](#docker-deployment)
+- [Kubernetes Deployment](#kubernetes-deployment)
+- [Cloud Deployment](#cloud-deployment)
+- [Configuration](#configuration)
+- [Monitoring](#monitoring)
 
 ---
 
@@ -17,23 +18,27 @@ Complete deployment guide for containerized production deployment.
 
 ### Required Tools
 
-- **Docker** (v24.0+): Container runtime
-- **Docker Compose** (v2.20+): Local orchestration
-- **Kubernetes** (v1.28+): Production orchestration
-- **kubectl** (v1.28+): Kubernetes CLI
-- **Helm** (v3.12+): Kubernetes package manager (optional)
-- **Terraform** (v1.6+): Infrastructure as Code
-- **Git**: Version control
+- **Python 3.9+** (3.11 recommended)
+- **Docker** (v24.0+)
+- **Docker Compose** (v2.20+)
+- **Git**
 
-### Cloud Accounts (for production)
+### For Production
 
-- AWS Account with appropriate permissions
-- Or GCP/Azure account (modify Terraform accordingly)
-- Container Registry (GitHub Container Registry, ECR, GCR, or ACR)
+- **Kubernetes** (v1.28+)
+- **kubectl**
+- **Helm** (optional)
+- **Terraform** (v1.6+)
+
+### API Keys
+
+- OpenAI API key (for GPT models)
+- Anthropic API key (for Claude models)
+- Pinecone API key (for vector store)
 
 ---
 
-## Local Development Setup
+## Local Development
 
 ### 1. Clone Repository
 
@@ -42,26 +47,78 @@ git clone https://github.com/your-org/Solar-PV-LLM-AI.git
 cd Solar-PV-LLM-AI
 ```
 
-### 2. Configure Environment
+### 2. Create Virtual Environment
 
 ```bash
-# Copy example environment file
-cp .env.example .env
-
-# Edit .env with your configuration
-nano .env
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-**Important**: Update these critical values in `.env`:
-
-- `SECRET_KEY`: Generate with `openssl rand -hex 32`
-- `DATABASE_PASSWORD`: Strong password
-- `REDIS_PASSWORD`: Strong password
-- `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`: Your LLM API keys
-
-### 3. Start Services
+### 3. Install Dependencies
 
 ```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+**Required Environment Variables:**
+
+```bash
+# LLM Providers
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Vector Store
+PINECONE_API_KEY=...
+PINECONE_ENVIRONMENT=us-west1-gcp
+PINECONE_INDEX_NAME=solar-pv-docs
+
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/solar_pv_db
+
+# Application
+SECRET_KEY=your-secret-key
+ENVIRONMENT=development
+```
+
+### 5. Start the Application
+
+```bash
+# Start backend API
+uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# In another terminal, start frontend (if applicable)
+cd frontend
+streamlit run app.py
+```
+
+### 6. Access the Application
+
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **Frontend**: http://localhost:8501
+
+---
+
+## Docker Deployment
+
+### Quick Start
+
+```bash
+# Clone repository
+git clone https://github.com/your-org/Solar-PV-LLM-AI.git
+cd Solar-PV-LLM-AI
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your credentials
+
 # Start all services
 docker-compose up -d
 
@@ -72,92 +129,62 @@ docker-compose ps
 docker-compose logs -f backend
 ```
 
-### 4. Access Services
+### Services
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/api/docs
-- **Flower (Celery Monitor)**: http://localhost:5555
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3001 (admin/admin)
+| Service | Port | Description |
+|---------|------|-------------|
+| backend | 8000 | FastAPI application |
+| frontend | 8501 | Streamlit web UI |
+| postgres | 5432 | PostgreSQL database |
+| redis | 6379 | Redis cache/queue |
+| celery-worker | - | Background tasks |
+| celery-beat | - | Task scheduler |
+| flower | 5555 | Celery monitoring |
+| prometheus | 9090 | Metrics collection |
+| grafana | 3001 | Dashboards |
 
-### 5. Run Migrations
-
-```bash
-# Backend migrations (if using Alembic)
-docker-compose exec backend alembic upgrade head
-```
-
-### 6. Stop Services
+### Stop Services
 
 ```bash
 docker-compose down
 
-# Remove volumes (WARNING: deletes all data)
+# Remove volumes (WARNING: deletes data)
 docker-compose down -v
+```
+
+### Production Docker Compose
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 ---
 
-## Production Deployment
+## Kubernetes Deployment
 
-### Option 1: Kubernetes with Terraform (Recommended)
-
-#### Step 1: Provision Infrastructure
+### 1. Create Namespace
 
 ```bash
-cd terraform
-
-# Initialize Terraform
-terraform init
-
-# Copy and configure variables
-cp terraform.tfvars.example terraform.tfvars
-nano terraform.tfvars
-
-# Plan infrastructure changes
-terraform plan
-
-# Apply infrastructure
-terraform apply
+kubectl create namespace solar-pv-llm-ai
 ```
 
-#### Step 2: Configure kubectl
+### 2. Create Secrets
 
 ```bash
-# AWS EKS
-aws eks update-kubeconfig --name solar-pv-llm-ai --region us-east-1
-
-# Verify connection
-kubectl get nodes
-```
-
-#### Step 3: Create Secrets
-
-```bash
-# Create namespace
-kubectl apply -f kubernetes/namespace.yaml
-
-# Create secrets (NEVER commit actual secrets!)
 kubectl create secret generic solar-pv-secrets \
   --from-literal=DATABASE_PASSWORD=your_password \
   --from-literal=REDIS_PASSWORD=your_password \
   --from-literal=SECRET_KEY=your_secret_key \
   --from-literal=OPENAI_API_KEY=your_api_key \
+  --from-literal=ANTHROPIC_API_KEY=your_api_key \
+  --from-literal=PINECONE_API_KEY=your_api_key \
   --namespace=solar-pv-llm-ai
-
-# Or use sealed-secrets for GitOps
-# kubeseal --format=yaml < secrets.yaml > sealed-secrets.yaml
 ```
 
-#### Step 4: Deploy Application
+### 3. Deploy Application
 
 ```bash
-# Update image registry in deployment files
-export REGISTRY="ghcr.io/your-org"
-find kubernetes -name "*.yaml" -exec sed -i "s|REPLACE_WITH_YOUR_REGISTRY|$REGISTRY|g" {} \;
-
-# Apply all Kubernetes manifests
+# Apply all manifests
 kubectl apply -f kubernetes/configmap.yaml
 kubectl apply -f kubernetes/postgres/
 kubectl apply -f kubernetes/redis/
@@ -166,237 +193,165 @@ kubectl apply -f kubernetes/frontend/
 kubectl apply -f kubernetes/celery/
 kubectl apply -f kubernetes/ingress.yaml
 
-# Check deployment status
+# Check status
 kubectl get pods -n solar-pv-llm-ai
-kubectl get deployments -n solar-pv-llm-ai
+kubectl get services -n solar-pv-llm-ai
 ```
 
-#### Step 5: Configure DNS & SSL
+### 4. Configure Ingress & SSL
 
 ```bash
-# Install cert-manager for SSL certificates
+# Install cert-manager
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
 
-# Create ClusterIssuer for Let's Encrypt
-cat <<EOF | kubectl apply -f -
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: letsencrypt-prod
-spec:
-  acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: your-email@example.com
-    privateKeySecretRef:
-      name: letsencrypt-prod
-    solvers:
-    - http01:
-        ingress:
-          class: nginx
-EOF
+# Apply ClusterIssuer for Let's Encrypt
+kubectl apply -f kubernetes/cluster-issuer.yaml
 
-# Update Ingress with your domain
+# Update ingress with your domain
 kubectl edit ingress solar-pv-ingress -n solar-pv-llm-ai
 ```
 
-#### Step 6: Verify Deployment
+### 5. Verify Deployment
 
 ```bash
-# Check pod status
+# Check pods
 kubectl get pods -n solar-pv-llm-ai
-
-# Check services
-kubectl get svc -n solar-pv-llm-ai
-
-# Check ingress
-kubectl get ingress -n solar-pv-llm-ai
 
 # View logs
 kubectl logs -f deployment/backend -n solar-pv-llm-ai
 
-# Test endpoints
+# Test endpoint
 curl https://api.your-domain.com/health
 ```
 
-### Option 2: Docker Compose (Production)
+### Scaling
 
 ```bash
-# Use production override
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Manual scaling
+kubectl scale deployment backend --replicas=5 -n solar-pv-llm-ai
+
+# Check HPA (auto-scaling)
+kubectl get hpa -n solar-pv-llm-ai
 ```
 
 ---
 
-## CI/CD Pipeline
+## Cloud Deployment
 
-### GitHub Actions Setup
+### AWS (EKS)
 
-The repository includes a complete CI/CD pipeline in `.github/workflows/ci-cd.yml`.
-
-#### Required Secrets
-
-Configure these in GitHub repository settings:
-
-- `KUBE_CONFIG_STAGING`: Base64-encoded kubeconfig for staging
-- `KUBE_CONFIG_PRODUCTION`: Base64-encoded kubeconfig for production
+#### 1. Provision with Terraform
 
 ```bash
-# Encode kubeconfig
-cat ~/.kube/config | base64 | pbcopy
+cd terraform/aws
+
+# Initialize
+terraform init
+
+# Configure variables
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars
+
+# Deploy
+terraform plan
+terraform apply
 ```
 
-#### Workflow Triggers
-
-- **Push to `main`**: Deploys to production
-- **Push to `develop`**: Deploys to staging
-- **Pull Requests**: Runs tests only
-
-#### Manual Deployment
+#### 2. Configure kubectl
 
 ```bash
-# Trigger workflow manually
-gh workflow run ci-cd.yml
+aws eks update-kubeconfig --name solar-pv-llm-ai --region us-east-1
+kubectl get nodes
+```
+
+#### 3. Deploy Application
+
+Follow Kubernetes deployment steps above.
+
+### GCP (GKE)
+
+```bash
+cd terraform/gcp
+terraform init
+terraform apply
+
+gcloud container clusters get-credentials solar-pv-llm-ai --zone us-central1-a
+```
+
+### Azure (AKS)
+
+```bash
+cd terraform/azure
+terraform init
+terraform apply
+
+az aks get-credentials --resource-group solar-pv-rg --name solar-pv-llm-ai
 ```
 
 ---
 
-## Monitoring & Observability
+## Configuration
 
-### Prometheus & Grafana
+### Environment Variables
+
+See `.env.example` for all available options.
+
+**Core Settings:**
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `OPENAI_API_KEY` | OpenAI API key | Yes* |
+| `ANTHROPIC_API_KEY` | Anthropic API key | Yes* |
+| `PINECONE_API_KEY` | Pinecone API key | Yes |
+| `DATABASE_URL` | PostgreSQL connection | Yes |
+| `SECRET_KEY` | Application secret | Yes |
+| `REDIS_URL` | Redis connection | No |
+
+*At least one LLM provider required
+
+**RAG Settings:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TOP_K_RETRIEVAL` | 10 | Documents to retrieve |
+| `HYBRID_SEARCH_ENABLED` | true | Use hybrid search |
+| `BM25_WEIGHT` | 0.3 | Keyword search weight |
+| `RERANKING_ENABLED` | true | Enable reranking |
+
+---
+
+## Monitoring
+
+### Health Check
 
 ```bash
-# Access Prometheus
-kubectl port-forward -n solar-pv-llm-ai svc/prometheus 9090:9090
-
-# Access Grafana
-kubectl port-forward -n solar-pv-llm-ai svc/grafana 3000:3000
-
-# Default credentials: admin/admin
+curl http://localhost:8000/health
 ```
 
-### View Metrics
+### Prometheus Metrics
 
 ```bash
-# Backend metrics
 curl http://localhost:8000/metrics
-
-# Kubernetes metrics
-kubectl top nodes
-kubectl top pods -n solar-pv-llm-ai
 ```
+
+### Grafana Dashboards
+
+Access at http://localhost:3001 (default: admin/admin)
+
+Pre-configured dashboards:
+- System Overview
+- API Metrics
+- Query Statistics
+- Model Performance
 
 ### Logs
 
 ```bash
-# View logs
+# Docker
+docker-compose logs -f backend
+
+# Kubernetes
 kubectl logs -f deployment/backend -n solar-pv-llm-ai
-
-# Stream logs from all pods
-kubectl logs -f -l app=backend -n solar-pv-llm-ai
-
-# Previous pod logs (after crash)
-kubectl logs --previous deployment/backend -n solar-pv-llm-ai
-```
-
----
-
-## Backup & Disaster Recovery
-
-### Manual Backup
-
-```bash
-# Run backup script
-./scripts/backup.sh
-
-# Backups are saved to S3: s3://solar-pv-backups/
-```
-
-### Automated Backups
-
-Backups run automatically via CronJob (configure in Kubernetes).
-
-### Restore from Backup
-
-```bash
-# Download backup from S3
-aws s3 cp s3://solar-pv-backups/database/postgres_backup_20240101_120000.sql.gz .
-
-# Restore to database
-gunzip < postgres_backup_20240101_120000.sql.gz | \
-  kubectl exec -i -n solar-pv-llm-ai postgres-pod -- \
-  psql -U solar_pv_user -d solar_pv_db
-```
-
----
-
-## Rollback
-
-### Quick Rollback
-
-```bash
-# Rollback to previous version
-./scripts/rollback.sh
-
-# Rollback specific deployment
-./scripts/rollback.sh 0 backend
-
-# Rollback to specific revision
-./scripts/rollback.sh 3 backend
-```
-
-### Manual Rollback
-
-```bash
-# View rollout history
-kubectl rollout history deployment/backend -n solar-pv-llm-ai
-
-# Rollback to previous version
-kubectl rollout undo deployment/backend -n solar-pv-llm-ai
-
-# Rollback to specific revision
-kubectl rollout undo deployment/backend --to-revision=2 -n solar-pv-llm-ai
-```
-
----
-
-## Load Testing
-
-### Run Load Tests
-
-```bash
-# Simple load test
-./scripts/load-test.sh
-
-# Advanced load test with Locust
-cd load-testing
-locust -f locustfile.py --host=https://api.your-domain.com \
-  --users=100 --spawn-rate=10 --run-time=10m
-```
-
----
-
-## Scaling
-
-### Manual Scaling
-
-```bash
-# Scale backend
-kubectl scale deployment backend --replicas=5 -n solar-pv-llm-ai
-
-# Scale workers
-kubectl scale deployment celery-worker --replicas=3 -n solar-pv-llm-ai
-```
-
-### Auto-scaling
-
-Horizontal Pod Autoscaler (HPA) is configured automatically:
-
-- **Backend**: Min 2, Max 10 (70% CPU target)
-- **Workers**: Min 2, Max 10 (70% CPU target)
-
-```bash
-# Check HPA status
-kubectl get hpa -n solar-pv-llm-ai
 ```
 
 ---
@@ -405,89 +360,61 @@ kubectl get hpa -n solar-pv-llm-ai
 
 ### Common Issues
 
-#### Pods Not Starting
+#### Database Connection
 
 ```bash
-# Describe pod
-kubectl describe pod <pod-name> -n solar-pv-llm-ai
-
-# Check events
-kubectl get events -n solar-pv-llm-ai --sort-by='.lastTimestamp'
+# Test connection
+docker-compose exec backend python -c "from app.core.database import engine; print('OK')"
 ```
 
-#### Database Connection Issues
+#### LLM API Errors
+
+- Verify API keys in `.env`
+- Check rate limits
+- Validate model availability
+
+#### Vector Store Issues
+
+- Verify Pinecone API key and environment
+- Check index exists and dimensions match
+
+### Getting Help
+
+- **Documentation**: [README.md](README.md)
+- **Issues**: https://github.com/your-org/Solar-PV-LLM-AI/issues
+- **API Reference**: [API_REFERENCE.md](API_REFERENCE.md)
+
+---
+
+## Backup & Recovery
+
+### Database Backup
 
 ```bash
-# Test database connection
-kubectl exec -it -n solar-pv-llm-ai postgres-pod -- psql -U solar_pv_user -d solar_pv_db
+# Manual backup
+pg_dump -U postgres solar_pv_db > backup.sql
 
-# Check database logs
-kubectl logs -f deployment/postgres -n solar-pv-llm-ai
+# Docker
+docker-compose exec postgres pg_dump -U postgres solar_pv_db > backup.sql
 ```
 
-#### Image Pull Errors
+### Restore
 
 ```bash
-# Check image pull secrets
-kubectl get secrets -n solar-pv-llm-ai
-
-# Create image pull secret
-kubectl create secret docker-registry regcred \
-  --docker-server=ghcr.io \
-  --docker-username=your-username \
-  --docker-password=your-token \
-  -n solar-pv-llm-ai
-```
-
-### Health Checks
-
-```bash
-# Backend health
-curl https://api.your-domain.com/health
-
-# Database connectivity
-kubectl exec -n solar-pv-llm-ai deployment/backend -- \
-  python -c "from app.core.database import engine; print('OK')"
+psql -U postgres solar_pv_db < backup.sql
 ```
 
 ---
 
 ## Security Best Practices
 
-1. **Secrets Management**
-   - Use Kubernetes Secrets or external secret managers (Vault, AWS Secrets Manager)
-   - Never commit secrets to Git
-   - Rotate secrets regularly
-
-2. **Network Policies**
-   - Implement Kubernetes Network Policies
-   - Restrict pod-to-pod communication
-
-3. **RBAC**
-   - Use Role-Based Access Control
-   - Principle of least privilege
-
-4. **Image Security**
-   - Scan images for vulnerabilities
-   - Use minimal base images
-   - Run containers as non-root
-
-5. **SSL/TLS**
-   - Always use HTTPS in production
-   - Use cert-manager for automated certificate management
+1. **Secrets**: Use Kubernetes Secrets or Vault
+2. **Network**: Enable network policies
+3. **RBAC**: Principle of least privilege
+4. **Images**: Scan for vulnerabilities
+5. **SSL**: Always use HTTPS in production
+6. **Updates**: Keep dependencies updated
 
 ---
 
-## Support
-
-For issues and questions:
-
-- GitHub Issues: https://github.com/your-org/Solar-PV-LLM-AI/issues
-- Documentation: https://docs.your-domain.com
-- Email: support@your-domain.com
-
----
-
-## License
-
-[Your License Here]
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup.

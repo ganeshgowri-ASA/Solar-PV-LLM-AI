@@ -1,3 +1,1 @@
-"""
-Solar PV LLM AI Backend Package
-"""
+"""Solar PV LLM AI System - Backend Package"""

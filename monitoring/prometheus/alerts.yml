@@ -1,0 +1,252 @@
+# Prometheus Alerting Rules for Solar PV LLM AI
+
+groups:
+  # High-level Service Health Alerts
+  - name: service_health
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up{job="solar-pv-llm-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: application
+        annotations:
+          summary: "Solar PV LLM AI service is down"
+          description: "The application has been down for more than 1 minute."
+          runbook_url: "https://docs.company.com/runbooks/service-down"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is above 85% for 5 minutes. Current: {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.company.com/runbooks/high-memory"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above 80% for 5 minutes. Current: {{ $value }}%"
+          runbook_url: "https://docs.company.com/runbooks/high-cpu"
+
+  # LLM Performance Alerts
+  - name: llm_performance
+    interval: 30s
+    rules:
+      - alert: HighLLMLatency
+        expr: histogram_quantile(0.95, rate(llm_query_duration_seconds_bucket[5m])) > 5
+        for: 3m
+        labels:
+          severity: warning
+          component: llm
+        annotations:
+          summary: "High LLM query latency detected"
+          description: "95th percentile LLM latency is above 5 seconds: {{ $value }}s"
+          runbook_url: "https://docs.company.com/runbooks/high-llm-latency"
+
+      - alert: CriticalLLMLatency
+        expr: histogram_quantile(0.95, rate(llm_query_duration_seconds_bucket[5m])) > 10
+        for: 2m
+        labels:
+          severity: critical
+          component: llm
+        annotations:
+          summary: "Critical LLM query latency"
+          description: "95th percentile LLM latency is critically high: {{ $value }}s"
+          runbook_url: "https://docs.company.com/runbooks/critical-llm-latency"
+
+      - alert: HighTokenUsage
+        expr: rate(llm_tokens_total[5m]) > 10000
+        for: 5m
+        labels:
+          severity: warning
+          component: llm
+        annotations:
+          summary: "High token usage rate"
+          description: "Token usage rate is very high: {{ $value }} tokens/sec. This may indicate cost issues."
+          runbook_url: "https://docs.company.com/runbooks/high-token-usage"
+
+  # Hallucination Detection Alerts
+  - name: hallucination_detection
+    interval: 30s
+    rules:
+      - alert: HighHallucinationScore
+        expr: llm_hallucination_score > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          component: llm_quality
+        annotations:
+          summary: "High hallucination risk detected"
+          description: "Current hallucination score is {{ $value }}, which exceeds the threshold of 0.5"
+          runbook_url: "https://docs.company.com/runbooks/high-hallucination"
+
+      - alert: FrequentHallucinations
+        expr: rate(llm_hallucinations_detected_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: llm_quality
+        annotations:
+          summary: "Frequent hallucinations detected"
+          description: "Hallucination rate is {{ $value }} per second over the last 10 minutes"
+          runbook_url: "https://docs.company.com/runbooks/frequent-hallucinations"
+
+      - alert: LowConfidenceResponses
+        expr: histogram_quantile(0.50, rate(llm_response_confidence_bucket[10m])) < 0.3
+        for: 5m
+        labels:
+          severity: warning
+          component: llm_quality
+        annotations:
+          summary: "Low confidence in LLM responses"
+          description: "Median response confidence is only {{ $value }}"
+          runbook_url: "https://docs.company.com/runbooks/low-confidence"
+
+  # Error Rate Alerts
+  - name: error_rates
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: rate(errors_total[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: warning
+          component: application
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors/sec, exceeding threshold of 0.05/sec"
+          runbook_url: "https://docs.company.com/runbooks/high-error-rate"
+
+      - alert: CriticalErrorRate
+        expr: rate(errors_total[5m]) > 0.2
+        for: 1m
+        labels:
+          severity: critical
+          component: application
+        annotations:
+          summary: "Critical error rate"
+          description: "Error rate is critically high: {{ $value }} errors/sec"
+          runbook_url: "https://docs.company.com/runbooks/critical-error-rate"
+
+      - alert: IncreasedErrorRate
+        expr: |
+          (
+            rate(errors_total[5m])
+            /
+            rate(errors_total[5m] offset 1h)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: application
+        annotations:
+          summary: "Error rate increased significantly"
+          description: "Error rate has doubled compared to 1 hour ago"
+          runbook_url: "https://docs.company.com/runbooks/increased-errors"
+
+  # API Performance Alerts
+  - name: api_performance
+    interval: 30s
+    rules:
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API latency"
+          description: "95th percentile API latency is {{ $value }}s (threshold: 2s)"
+          runbook_url: "https://docs.company.com/runbooks/high-api-latency"
+
+      - alert: LowRequestRate
+        expr: rate(http_requests_total[5m]) < 0.1
+        for: 10m
+        labels:
+          severity: info
+          component: api
+        annotations:
+          summary: "Low request rate"
+          description: "Request rate is unusually low: {{ $value }} req/sec"
+          runbook_url: "https://docs.company.com/runbooks/low-request-rate"
+
+      - alert: HighRequestRate
+        expr: rate(http_requests_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High request rate"
+          description: "Request rate is very high: {{ $value }} req/sec. Possible DDoS or load spike."
+          runbook_url: "https://docs.company.com/runbooks/high-request-rate"
+
+  # RAG System Alerts
+  - name: rag_system
+    interval: 30s
+    rules:
+      - alert: SlowRAGRetrieval
+        expr: histogram_quantile(0.95, rate(rag_retrieval_duration_seconds_bucket[5m])) > 1
+        for: 3m
+        labels:
+          severity: warning
+          component: rag
+        annotations:
+          summary: "Slow RAG document retrieval"
+          description: "95th percentile RAG retrieval time is {{ $value }}s (threshold: 1s)"
+          runbook_url: "https://docs.company.com/runbooks/slow-rag"
+
+      - alert: LowDocumentRetrieval
+        expr: histogram_quantile(0.50, rate(rag_documents_retrieved_bucket[10m])) < 1
+        for: 5m
+        labels:
+          severity: warning
+          component: rag
+        annotations:
+          summary: "Low document retrieval count"
+          description: "Median documents retrieved is {{ $value }}, which may indicate RAG system issues"
+          runbook_url: "https://docs.company.com/runbooks/low-doc-retrieval"
+
+  # Prometheus and Monitoring Stack Alerts
+  - name: monitoring_stack
+    interval: 1m
+    rules:
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "Prometheus is down"
+          description: "Prometheus monitoring system is not running"
+
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: monitoring
+        annotations:
+          summary: "AlertManager is down"
+          description: "AlertManager is not running - alerts will not be delivered"
+
+      - alert: PrometheusTSDBCompactionsFailing
+        expr: increase(prometheus_tsdb_compactions_failed_total[3h]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: "Prometheus TSDB compactions failing"
+          description: "Prometheus has {{ $value }} failed compactions in the last 3 hours"

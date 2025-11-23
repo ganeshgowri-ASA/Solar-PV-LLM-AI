@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-models-pvc
+  namespace: solar-pv-llm-ai
+  labels:
+    app: backend
+spec:
+  accessModes:
+    - ReadWriteMany  # Shared across multiple backend pods
+  resources:
+    requests:
+      storage: 50Gi
+  # storageClassName: efs  # Use EFS, NFS, or similar for shared storage

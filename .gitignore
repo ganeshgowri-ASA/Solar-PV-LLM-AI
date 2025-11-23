@@ -28,6 +28,23 @@ parts/
 sdist/
 var/
 wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# Environment files
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
@@ -48,10 +65,17 @@ ENV/
 *.swo
 *~
 
+# Jupyter
+.ipynb_checkpoints/
+
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
 .tox/
 .nox/
 

@@ -1,453 +1,391 @@
 """
-Mock API service for Solar PV LLM AI System
-Simulates backend responses for frontend development
+Mock Service Bridge Module
+Bridges mock API calls to the real api_client for Solar PV LLM system.
+
+This module provides backward compatibility for pages that expect a mock API interface
+while routing calls to the actual API client implementation.
 """
-import random
-import time
+
+import sys
+from pathlib import Path
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
-import pandas as pd
+import random
+
+# Add frontend to path for api_client import
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'frontend'))
+
+try:
+    from api_client import get_client, ExpertiseLevel
+except ImportError:
+    # Fallback if api_client is not available
+    get_client = None
+    ExpertiseLevel = None
+
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
 
 
-class MockAPIService:
-    """Mock API service to simulate backend responses"""
+class MockAPI:
+    """
+    Mock API bridge that maps mock service calls to the real API client.
+    Provides consistent interface for dashboard, chat, search, and calculator pages.
+    """
 
     def __init__(self):
-        self.standards_db = self._init_standards_db()
-        self.chat_history = []
+        """Initialize MockAPI with real client if available"""
+        self.client = get_client() if get_client else None
+        self._expertise_level = ExpertiseLevel.INTERMEDIATE if ExpertiseLevel else None
 
-    def _init_standards_db(self) -> List[Dict[str, Any]]:
-        """Initialize mock standards database"""
-        return [
-            {
-                "id": "iec-61215",
-                "title": "IEC 61215 - Crystalline Silicon PV Module Testing",
-                "category": "Module Testing",
-                "description": "Terrestrial photovoltaic (PV) modules - Design qualification and type approval",
-                "sections": [
-                    "General Requirements",
-                    "Visual Inspection",
-                    "Maximum Power Determination",
-                    "Insulation Test",
-                    "Temperature Coefficient Measurement",
-                    "NOCT Measurement",
-                    "Performance at Low Irradiance",
-                    "Outdoor Exposure Test",
-                    "Hot-Spot Endurance Test",
-                    "UV Preconditioning Test",
-                    "Thermal Cycling Test",
-                    "Humidity Freeze Test",
-                    "Damp Heat Test",
-                    "Robustness of Terminations Test",
-                    "Wet Leakage Current Test",
-                    "Mechanical Load Test",
-                    "Hail Test",
-                    "Bypass Diode Thermal Test",
-                ],
-                "test_count": 18,
-                "difficulty": "Advanced",
-            },
-            {
-                "id": "iec-61730",
-                "title": "IEC 61730 - PV Module Safety Qualification",
-                "category": "Safety",
-                "description": "Photovoltaic (PV) module safety qualification",
-                "sections": [
-                    "General Requirements",
-                    "Construction Requirements",
-                    "Mechanical Stress Test",
-                    "Electrical Safety Test",
-                    "Fire Safety Test",
-                    "Environmental Test",
-                ],
-                "test_count": 6,
-                "difficulty": "Intermediate",
-            },
-            {
-                "id": "iec-61853",
-                "title": "IEC 61853 - PV Module Performance Testing",
-                "category": "Performance",
-                "description": "Photovoltaic (PV) module performance testing and energy rating",
-                "sections": [
-                    "Irradiance and Temperature Performance",
-                    "Spectral Response",
-                    "Incidence Angle Response",
-                    "Operating Temperature",
-                    "Energy Rating",
-                ],
-                "test_count": 5,
-                "difficulty": "Intermediate",
-            },
-            {
-                "id": "iec-62446",
-                "title": "IEC 62446 - Grid Connected PV Systems",
-                "category": "Systems",
-                "description": "Grid connected photovoltaic systems - Minimum requirements for system documentation, commissioning tests and inspection",
-                "sections": [
-                    "Documentation Requirements",
-                    "Commissioning Tests",
-                    "Inspection Procedures",
-                    "Performance Verification",
-                ],
-                "test_count": 4,
-                "difficulty": "Beginner",
-            },
-            {
-                "id": "iec-60904",
-                "title": "IEC 60904 - PV Device Measurements",
-                "category": "Measurements",
-                "description": "Photovoltaic devices - Measurement procedures",
-                "sections": [
-                    "Measurement of Current-Voltage Characteristics",
-                    "Reference Devices Calibration",
-                    "Standard Test Conditions",
-                    "Temperature and Irradiance Corrections",
-                ],
-                "test_count": 4,
-                "difficulty": "Intermediate",
-            },
-        ]
-
-    def chat_completion(
-        self, message: str, include_sources: bool = True
-    ) -> Dict[str, Any]:
+    def chat_completion(self, query: str, include_sources: bool = True) -> dict:
         """
-        Simulate chat completion with RAG
+        Bridge chat_completion to real API.
+
+        Args:
+            query: User's question
+            include_sources: Whether to include citation sources
+
+        Returns:
+            Dict with content and sources
         """
-        time.sleep(0.5)  # Simulate API delay
+        try:
+            if self.client and self._expertise_level:
+                response = self.client.chat_query(query, self._expertise_level, None)
+                if response.success:
+                    data = response.data
+                    return {
+                        "content": data.get("response", "Sorry, I couldn't generate a response."),
+                        "sources": self._format_citations(data.get("citations", [])) if include_sources else []
+                    }
+                else:
+                    return {"content": f"Error: {response.error}", "sources": []}
+            else:
+                # Fallback mock response
+                return self._get_fallback_response(query, include_sources)
+        except Exception as e:
+            return {"content": f"Error: {str(e)}", "sources": []}
 
-        # Generate mock response based on keywords
-        response_text = self._generate_mock_response(message)
+    def _format_citations(self, citations: list) -> list:
+        """
+        Format citations for mock service interface.
 
-        # Generate mock sources
-        sources = []
-        if include_sources:
-            sources = self._generate_mock_sources(message)
+        Args:
+            citations: Raw citations from API
 
-        return {
-            "content": response_text,
-            "sources": sources,
-            "timestamp": datetime.now().isoformat(),
-            "model": "gpt-4-turbo-preview",
-        }
-
-    def _generate_mock_response(self, message: str) -> str:
-        """Generate contextual mock response"""
-        message_lower = message.lower()
-
-        if "test" in message_lower or "testing" in message_lower:
-            return """Based on IEC standards, solar PV module testing involves several key procedures:
-
-1. **Visual Inspection**: Check for physical defects, proper labeling, and construction quality
-2. **Electrical Performance**: Measure I-V characteristics, maximum power, and efficiency under standard test conditions (STC: 1000 W/m², 25°C, AM 1.5)
-3. **Safety Tests**: Insulation resistance, wet leakage current, and ground continuity
-4. **Environmental Tests**:
-   - Thermal cycling (-40°C to +85°C)
-   - Humidity freeze
-   - Damp heat (85°C/85% RH for 1000 hours)
-   - UV preconditioning
-5. **Mechanical Tests**: Static and dynamic mechanical load testing, hail impact test
-6. **Hot-spot endurance**: Verify bypass diode protection
-
-These tests ensure modules meet safety, reliability, and performance requirements per IEC 61215 and IEC 61730 standards."""
-
-        elif "efficiency" in message_lower or "calculate" in message_lower:
-            return """Solar PV efficiency can be calculated using:
-
-**Module Efficiency = (Pmax / (A × G)) × 100%**
-
-Where:
-- Pmax = Maximum power output (W)
-- A = Module area (m²)
-- G = Irradiance (W/m²)
-
-For system-level calculations:
-- **Performance Ratio (PR)** = Actual Energy / Theoretical Energy
-- **Capacity Factor** = Actual Output / Rated Capacity
-- **Energy Yield** = Irradiation × System Size × PR
-
-Typical crystalline silicon module efficiency ranges from 18-22%, while system efficiency is typically 75-85% due to losses from inverters, wiring, shading, and temperature effects."""
-
-        elif "standard" in message_lower or "iec" in message_lower:
-            return """Key IEC standards for solar PV systems include:
-
-**Module Level:**
-- **IEC 61215**: Design qualification and type approval for crystalline silicon modules
-- **IEC 61730**: Module safety qualification (electrical and fire safety)
-- **IEC 61853**: Module performance testing and energy rating
-
-**System Level:**
-- **IEC 62446**: Grid-connected system documentation and commissioning
-- **IEC 61724**: PV system performance monitoring
-- **IEC 62109**: Safety of power converters in PV systems
-
-**Measurement Standards:**
-- **IEC 60904**: Photovoltaic device measurement procedures
-- **IEC 61727**: Characteristics of grid-connected inverters
-
-Each standard ensures safety, reliability, and performance requirements are met throughout the product lifecycle."""
-
-        elif "safety" in message_lower:
-            return """PV module safety requirements per IEC 61730 include:
-
-**Construction Requirements:**
-- Adequate insulation and isolation
-- Proper grounding provisions
-- Fire-resistant materials (Class A or B)
-- Secure terminations and connections
-
-**Electrical Safety:**
-- Insulation resistance > 40 MΩ
-- Wet leakage current < 1 μA/V
-- Voltage rating appropriate for system design
-- Proper protection against reverse current
-
-**Fire Safety:**
-- Fire classification testing
-- Spread of flame testing
-- Material flammability assessment
-
-**Environmental Protection:**
-- IP67 or better for junction boxes
-- Protection against moisture ingress
-- UV and temperature resistance
-
-Regular safety inspections and compliance testing ensure long-term safe operation."""
-
-        else:
-            return """I can help you with various aspects of solar PV systems, including:
-
-- IEC standards and compliance requirements
-- Module testing procedures and methodologies
-- Performance calculations and system design
-- Safety requirements and best practices
-- Energy yield estimation and optimization
-- Image analysis of PV installations
-- Technical troubleshooting and recommendations
-
-Please feel free to ask specific questions about any of these topics, and I'll provide detailed, citation-backed answers based on industry standards and best practices."""
-
-    def _generate_mock_sources(self, message: str) -> List[Dict[str, Any]]:
-        """Generate mock source citations"""
-        sources = []
-
-        # Select relevant standards based on message content
-        relevant_standards = [
-            s for s in self.standards_db
-            if any(word in message.lower() for word in s["title"].lower().split())
-        ]
-
-        if not relevant_standards:
-            relevant_standards = random.sample(self.standards_db, min(3, len(self.standards_db)))
-
-        for std in relevant_standards[:3]:
-            sources.append({
-                "title": std["title"],
-                "excerpt": f"{std['description']}... This standard covers {std['test_count']} key test procedures.",
-                "page": random.randint(10, 150),
-                "section": random.choice(std["sections"]),
-                "relevance_score": random.uniform(0.75, 0.95),
+        Returns:
+            Formatted citation list
+        """
+        formatted = []
+        for cite in citations:
+            formatted.append({
+                "title": cite.get('source', 'Unknown'),
+                "excerpt": cite.get('text', ''),
+                "page": cite.get('page', 1),
+                "section": cite.get('section', 'General'),
+                "relevance_score": cite.get('score', 0.85)
             })
+        return formatted
 
-        return sources
-
-    def search_standards(
-        self,
-        query: str = "",
-        categories: Optional[List[str]] = None,
-        difficulty: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:
-        """Search standards database with filters"""
-        time.sleep(0.3)
-
-        results = self.standards_db.copy()
-
-        # Apply query filter
-        if query:
-            results = [
-                s for s in results
-                if query.lower() in s["title"].lower()
-                or query.lower() in s["description"].lower()
-            ]
-
-        # Apply category filter
-        if categories:
-            results = [s for s in results if s["category"] in categories]
-
-        # Apply difficulty filter
-        if difficulty:
-            results = [s for s in results if s["difficulty"] in difficulty]
-
-        return results
-
-    def get_standard_detail(self, standard_id: str) -> Optional[Dict[str, Any]]:
-        """Get detailed information about a standard"""
-        time.sleep(0.2)
-
-        for std in self.standards_db:
-            if std["id"] == standard_id:
-                # Add additional details
-                std_detail = std.copy()
-                std_detail["last_updated"] = "2023-06-15"
-                std_detail["version"] = "Edition 3.1"
-                std_detail["status"] = "Active"
-                std_detail["related_standards"] = [
-                    s["id"] for s in self.standards_db if s["id"] != standard_id
-                ][:3]
-                return std_detail
-
-        return None
-
-    def analyze_image(self, image_file) -> Dict[str, Any]:
-        """Simulate image analysis"""
-        time.sleep(1.5)
-
+    def _get_fallback_response(self, query: str, include_sources: bool) -> dict:
+        """Provide fallback response when client is unavailable"""
         return {
-            "status": "success",
-            "analysis": {
-                "module_type": "Monocrystalline Silicon",
-                "detected_defects": [
-                    {
-                        "type": "Micro-crack",
-                        "severity": "Medium",
-                        "location": "Cell A5",
-                        "confidence": 0.87,
-                    },
-                    {
-                        "type": "Hot-spot",
-                        "severity": "Low",
-                        "location": "Cell B3",
-                        "confidence": 0.72,
-                    },
-                ],
-                "overall_health": "Good",
-                "recommendations": [
-                    "Monitor micro-crack in Cell A5 for potential degradation",
-                    "Verify bypass diode functionality for hot-spot in Cell B3",
-                    "Schedule follow-up inspection in 6 months",
-                ],
-                "estimated_power_loss": "2.3%",
-            },
-            "timestamp": datetime.now().isoformat(),
+            "content": "Solar photovoltaic systems convert sunlight into electricity using "
+                      "semiconductor materials. This technology is widely used for renewable "
+                      "energy generation in residential, commercial, and utility-scale applications.",
+            "sources": [
+                {
+                    "title": "Solar PV Fundamentals",
+                    "excerpt": "Basic principles of photovoltaic energy conversion",
+                    "page": 1,
+                    "section": "Introduction",
+                    "relevance_score": 0.90
+                }
+            ] if include_sources else []
         }
 
-    def calculate_energy_yield(
-        self,
-        system_size_kw: float,
-        location_irradiance: float,
-        performance_ratio: float = 0.8,
-    ) -> Dict[str, Any]:
-        """Calculate energy yield"""
-        daily_energy = system_size_kw * location_irradiance * performance_ratio
-        annual_energy = daily_energy * 365
+    def get_dashboard_metrics(self) -> dict:
+        """
+        Return dashboard metrics for system monitoring.
 
-        return {
-            "daily_energy_kwh": round(daily_energy, 2),
-            "monthly_energy_kwh": round(daily_energy * 30, 2),
-            "annual_energy_kwh": round(annual_energy, 2),
-            "annual_energy_mwh": round(annual_energy / 1000, 2),
-            "co2_offset_kg": round(annual_energy * 0.5, 2),  # Approx 0.5 kg CO2/kWh
-        }
-
-    def calculate_system_sizing(
-        self,
-        daily_consumption_kwh: float,
-        peak_sun_hours: float,
-        system_efficiency: float = 0.8,
-    ) -> Dict[str, Any]:
-        """Calculate system sizing"""
-        required_system_size = (daily_consumption_kwh / peak_sun_hours) / system_efficiency
-
-        # Assume 400W panels
-        panel_wattage = 400
-        num_panels = int(required_system_size * 1000 / panel_wattage) + 1
-
-        return {
-            "required_system_size_kw": round(required_system_size, 2),
-            "recommended_panels": num_panels,
-            "panel_wattage": panel_wattage,
-            "total_system_size_kw": round((num_panels * panel_wattage) / 1000, 2),
-            "estimated_roof_area_m2": round(num_panels * 2, 2),  # ~2 m² per panel
-        }
-
-    def calculate_roi(
-        self,
-        system_cost: float,
-        annual_savings: float,
-        electricity_rate_increase: float = 0.03,
-    ) -> Dict[str, Any]:
-        """Calculate ROI"""
-        years_to_payback = system_cost / annual_savings
-
-        total_savings_25_years = sum(
-            annual_savings * ((1 + electricity_rate_increase) ** year)
-            for year in range(25)
-        )
-
-        roi_percentage = ((total_savings_25_years - system_cost) / system_cost) * 100
-
-        return {
-            "payback_period_years": round(years_to_payback, 1),
-            "total_savings_25_years": round(total_savings_25_years, 2),
-            "roi_percentage": round(roi_percentage, 1),
-            "net_profit_25_years": round(total_savings_25_years - system_cost, 2),
-        }
-
-    def get_dashboard_metrics(self) -> Dict[str, Any]:
-        """Get dashboard metrics"""
+        Returns:
+            Dict with system health, usage stats, knowledge base info, and recent activity
+        """
         return {
             "system_health": {
                 "status": "Healthy",
                 "uptime_percentage": 99.7,
-                "active_queries": random.randint(10, 50),
-                "response_time_ms": random.randint(150, 350),
+                "active_queries": random.randint(5, 25),
+                "response_time_ms": random.randint(180, 280)
             },
             "usage_stats": {
-                "total_queries": random.randint(1000, 5000),
-                "successful_queries": random.randint(900, 4800),
-                "failed_queries": random.randint(10, 50),
-                "avg_response_time": random.randint(200, 400),
+                "total_queries": random.randint(8000, 12000),
+                "successful_queries": random.randint(7500, 11500),
+                "failed_queries": random.randint(50, 150),
+                "avg_response_time": random.randint(200, 300)
             },
             "knowledge_base": {
                 "total_documents": 1247,
-                "indexed_standards": len(self.standards_db),
-                "last_updated": datetime.now().isoformat(),
-                "index_size_mb": random.randint(500, 1500),
+                "indexed_standards": 89,
+                "index_size_mb": 456,
+                "last_updated": datetime.now().isoformat()
             },
-            "recent_activity": self._generate_recent_activity(),
+            "recent_activity": [
+                {
+                    "type": "Chat Query",
+                    "status": "success",
+                    "timestamp": (datetime.now() - timedelta(minutes=i*5)).isoformat(),
+                    "duration_ms": random.randint(150, 350)
+                } for i in range(10)
+            ]
         }
 
-    def _generate_recent_activity(self) -> List[Dict[str, Any]]:
-        """Generate mock recent activity"""
-        activities = []
-        activity_types = [
-            "Query answered",
-            "Document indexed",
-            "Standard updated",
-            "Image analyzed",
-            "Calculation performed",
-        ]
+    def get_time_series_data(self, days: int = 30):
+        """
+        Return time series data for charts.
 
-        for i in range(10):
-            activities.append({
-                "type": random.choice(activity_types),
-                "timestamp": (datetime.now() - timedelta(minutes=random.randint(1, 120))).isoformat(),
-                "status": random.choice(["success", "success", "success", "warning"]),
-            })
+        Args:
+            days: Number of days of historical data
 
-        return activities
+        Returns:
+            DataFrame with date, queries, response_time, and success_rate columns
+        """
+        dates = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days)]
 
-    def get_time_series_data(self, days: int = 30) -> pd.DataFrame:
-        """Generate time series data for charts"""
-        dates = pd.date_range(end=datetime.now(), periods=days, freq="D")
         data = {
-            "date": dates,
-            "queries": [random.randint(50, 200) for _ in range(days)],
-            "response_time": [random.randint(150, 400) for _ in range(days)],
-            "success_rate": [random.uniform(95, 100) for _ in range(days)],
+            "date": list(reversed(dates)),
+            "queries": [random.randint(200, 500) for _ in range(days)],
+            "response_time": [random.randint(180, 320) for _ in range(days)],
+            "success_rate": [round(random.uniform(94, 99), 2) for _ in range(days)]
         }
-        return pd.DataFrame(data)
+
+        if HAS_PANDAS:
+            return pd.DataFrame(data)
+        else:
+            # Return dict if pandas not available
+            return data
+
+    def get_hourly_distribution(self) -> dict:
+        """
+        Return hourly query distribution data.
+
+        Returns:
+            Dict with hours and query counts
+        """
+        return {
+            "hours": list(range(24)),
+            "queries": [
+                random.randint(5, 15),   # 0:00
+                random.randint(3, 10),   # 1:00
+                random.randint(2, 8),    # 2:00
+                random.randint(2, 6),    # 3:00
+                random.randint(3, 8),    # 4:00
+                random.randint(5, 15),   # 5:00
+                random.randint(10, 25),  # 6:00
+                random.randint(20, 40),  # 7:00
+                random.randint(35, 60),  # 8:00
+                random.randint(50, 80),  # 9:00
+                random.randint(60, 90),  # 10:00
+                random.randint(55, 85),  # 11:00
+                random.randint(45, 70),  # 12:00
+                random.randint(50, 75),  # 13:00
+                random.randint(55, 80),  # 14:00
+                random.randint(50, 75),  # 15:00
+                random.randint(40, 65),  # 16:00
+                random.randint(35, 55),  # 17:00
+                random.randint(25, 45),  # 18:00
+                random.randint(20, 35),  # 19:00
+                random.randint(15, 30),  # 20:00
+                random.randint(12, 25),  # 21:00
+                random.randint(10, 20),  # 22:00
+                random.randint(8, 18),   # 23:00
+            ]
+        }
+
+    def search_standards(self, query: str, filters: dict = None) -> dict:
+        """
+        Search standards library.
+
+        Args:
+            query: Search query
+            filters: Optional filters (standard_type, year_range, etc.)
+
+        Returns:
+            Dict with search results
+        """
+        try:
+            if self.client:
+                standard_types = filters.get("standard_types") if filters else None
+                response = self.client.search_standards(query, standard_types)
+                if response.success:
+                    return response.data
+
+            # Fallback mock standards
+            return {
+                "standards": [
+                    {
+                        "id": "IEC 61215-1",
+                        "title": "Terrestrial PV Modules - Design Qualification Part 1",
+                        "type": "IEC",
+                        "description": "General requirements for crystalline silicon PV modules",
+                        "year": 2021,
+                        "relevance": 0.95
+                    },
+                    {
+                        "id": "IEC 61730-1",
+                        "title": "PV Module Safety Qualification Part 1",
+                        "type": "IEC",
+                        "description": "Requirements for construction of PV modules",
+                        "year": 2016,
+                        "relevance": 0.88
+                    },
+                    {
+                        "id": "IEEE 1547-2018",
+                        "title": "Interconnection and Interoperability of DER",
+                        "type": "IEEE",
+                        "description": "Standard for distributed energy resources interconnection",
+                        "year": 2018,
+                        "relevance": 0.82
+                    }
+                ],
+                "total": 3
+            }
+        except Exception as e:
+            return {"standards": [], "total": 0, "error": str(e)}
+
+    def calculate_system(self, params: dict) -> dict:
+        """
+        Calculate solar system sizing.
+
+        Args:
+            params: Calculation parameters (consumption, location, panel_wattage, etc.)
+
+        Returns:
+            Dict with system sizing recommendations
+        """
+        try:
+            if self.client:
+                response = self.client.calculate_system_size(
+                    annual_consumption_kwh=params.get("annual_consumption", 10000),
+                    location_factor=params.get("location_factor", 1.0),
+                    panel_wattage=params.get("panel_wattage", 400),
+                    system_losses=params.get("system_losses", 0.14)
+                )
+                if response.success:
+                    return response.data
+
+            # Fallback calculation
+            consumption = params.get("annual_consumption", 10000)
+            panel_wattage = params.get("panel_wattage", 400)
+            location_factor = params.get("location_factor", 1.0)
+
+            # Simple calculation
+            peak_sun_hours = 4.5 * location_factor
+            system_size_kw = consumption / (peak_sun_hours * 365 * 0.86)
+            num_panels = int((system_size_kw * 1000) / panel_wattage) + 1
+
+            return {
+                "recommended_size_kw": round(system_size_kw, 2),
+                "actual_size_kw": round((num_panels * panel_wattage) / 1000, 2),
+                "num_panels": num_panels,
+                "panel_wattage": panel_wattage,
+                "estimated_annual_production_kwh": round(consumption * 1.05, 0),
+                "coverage_percentage": 105.0
+            }
+        except Exception as e:
+            return {"error": str(e)}
+
+    def analyze_image(self, image_data: bytes, analysis_type: str = "general") -> dict:
+        """
+        Analyze solar panel image (placeholder for Roboflow integration).
+
+        Args:
+            image_data: Image bytes
+            analysis_type: Type of analysis (general, defect, thermal, el)
+
+        Returns:
+            Dict with analysis results
+        """
+        # Placeholder - actual implementation will use Roboflow
+        return {
+            "status": "pending_integration",
+            "message": "Image analysis via Roboflow integration coming soon",
+            "analysis_type": analysis_type,
+            "placeholder_results": {
+                "detected_panels": 0,
+                "defects_found": [],
+                "confidence": 0.0,
+                "recommendations": [
+                    "Roboflow VI/EL/IR analysis integration in progress"
+                ]
+            }
+        }
+
+    def get_category_breakdown(self) -> dict:
+        """
+        Return query category breakdown for analytics.
+
+        Returns:
+            Dict with category names and percentages
+        """
+        return {
+            "categories": [
+                {"name": "Installation", "percentage": 28, "count": 2800},
+                {"name": "Efficiency", "percentage": 22, "count": 2200},
+                {"name": "Standards", "percentage": 18, "count": 1800},
+                {"name": "Troubleshooting", "percentage": 15, "count": 1500},
+                {"name": "Design", "percentage": 12, "count": 1200},
+                {"name": "Other", "percentage": 5, "count": 500}
+            ]
+        }
+
+    def get_expertise_distribution(self) -> dict:
+        """
+        Return user expertise level distribution.
+
+        Returns:
+            Dict with expertise levels and counts
+        """
+        return {
+            "levels": [
+                {"level": "Beginner", "count": 3500, "percentage": 35},
+                {"level": "Intermediate", "count": 4500, "percentage": 45},
+                {"level": "Expert", "count": 2000, "percentage": 20}
+            ]
+        }
 
 
-# Global instance
-mock_api = MockAPIService()
+# Singleton instance for module-level access
+mock_api = MockAPI()
+
+
+# Convenience functions for direct import
+def chat_completion(query: str, include_sources: bool = True) -> dict:
+    """Wrapper for mock_api.chat_completion"""
+    return mock_api.chat_completion(query, include_sources)
+
+
+def get_dashboard_metrics() -> dict:
+    """Wrapper for mock_api.get_dashboard_metrics"""
+    return mock_api.get_dashboard_metrics()
+
+
+def get_time_series_data(days: int = 30):
+    """Wrapper for mock_api.get_time_series_data"""
+    return mock_api.get_time_series_data(days)
+
+
+def search_standards(query: str, filters: dict = None) -> dict:
+    """Wrapper for mock_api.search_standards"""
+    return mock_api.search_standards(query, filters)
+
+
+def calculate_system(params: dict) -> dict:
+    """Wrapper for mock_api.calculate_system"""
+    return mock_api.calculate_system(params)
+
+
+def analyze_image(image_data: bytes, analysis_type: str = "general") -> dict:
+    """Wrapper for mock_api.analyze_image"""
+    return mock_api.analyze_image(image_data, analysis_type)

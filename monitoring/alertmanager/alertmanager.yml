@@ -1,0 +1,208 @@
+# AlertManager Configuration for Solar PV LLM AI
+
+global:
+  # Global SMTP configuration for email alerts
+  smtp_smarthost: '${SMTP_HOST:smtp.gmail.com}:${SMTP_PORT:587}'
+  smtp_from: '${SMTP_FROM:alerts@yourdomain.com}'
+  smtp_auth_username: '${SMTP_USERNAME}'
+  smtp_auth_password: '${SMTP_PASSWORD}'
+  smtp_require_tls: true
+
+  # Slack webhook URL (if configured)
+  slack_api_url: '${SLACK_WEBHOOK_URL}'
+
+  # Resolve timeout - how long to wait before sending a resolved notification
+  resolve_timeout: 5m
+
+# Templates for custom notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert routing
+route:
+  # Default receiver for all alerts
+  receiver: 'default-receiver'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'severity', 'component']
+
+  # Wait time before sending the first notification
+  group_wait: 30s
+
+  # Wait time before sending notification about new alerts in the same group
+  group_interval: 5m
+
+  # Wait time before re-sending a notification
+  repeat_interval: 4h
+
+  # Child routes for specific alert types
+  routes:
+    # Critical alerts - immediate notification to all channels
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 30m
+      continue: true
+
+    # LLM quality issues - notify ML team
+    - match:
+        component: llm_quality
+      receiver: 'ml-team'
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 2h
+
+    # System resource alerts
+    - match:
+        component: system
+      receiver: 'infrastructure-team'
+      group_wait: 5m
+      group_interval: 10m
+      repeat_interval: 4h
+
+    # API performance alerts
+    - match:
+        component: api
+      receiver: 'backend-team'
+      group_wait: 2m
+      group_interval: 10m
+      repeat_interval: 2h
+
+    # Monitoring stack alerts
+    - match:
+        component: monitoring
+      receiver: 'infrastructure-team'
+      group_wait: 1m
+      repeat_interval: 1h
+
+# Inhibition rules - suppress certain alerts when others are firing
+inhibit_rules:
+  # If service is down, don't alert on high latency
+  - source_match:
+      alertname: 'ServiceDown'
+    target_match:
+      component: 'application'
+    equal: ['instance']
+
+  # If critical error rate, suppress warning error rate
+  - source_match:
+      severity: 'critical'
+      alertname: 'CriticalErrorRate'
+    target_match:
+      severity: 'warning'
+      alertname: 'HighErrorRate'
+    equal: ['endpoint']
+
+  # If Prometheus is down, suppress other monitoring alerts
+  - source_match:
+      alertname: 'PrometheusDown'
+    target_match:
+      component: 'monitoring'
+    equal: ['cluster']
+
+# Receivers - define notification channels
+receivers:
+  # Default receiver - email to ops team
+  - name: 'default-receiver'
+    email_configs:
+      - to: '${SMTP_TO:oncall@yourdomain.com}'
+        headers:
+          Subject: '[Solar PV LLM AI] {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>Alert: {{ .GroupLabels.alertname }}</h2>
+          <p><strong>Severity:</strong> {{ .GroupLabels.severity }}</p>
+          <p><strong>Component:</strong> {{ .GroupLabels.component }}</p>
+          <p><strong>Description:</strong></p>
+          {{ range .Alerts }}
+            <ul>
+              <li>{{ .Annotations.description }}</li>
+              <li><strong>Summary:</strong> {{ .Annotations.summary }}</li>
+              <li><strong>Runbook:</strong> <a href="{{ .Annotations.runbook_url }}">{{ .Annotations.runbook_url }}</a></li>
+            </ul>
+          {{ end }}
+
+  # Critical alerts - email + Slack + PagerDuty
+  - name: 'critical-alerts'
+    email_configs:
+      - to: '${SMTP_TO:oncall@yourdomain.com}'
+        send_resolved: true
+        headers:
+          Subject: '[CRITICAL] Solar PV LLM AI - {{ .GroupLabels.alertname }}'
+        html: |
+          <h1 style="color: red;">🚨 CRITICAL ALERT 🚨</h1>
+          <h2>{{ .GroupLabels.alertname }}</h2>
+          <p><strong>Component:</strong> {{ .GroupLabels.component }}</p>
+          {{ range .Alerts }}
+            <div style="border: 2px solid red; padding: 10px; margin: 10px 0;">
+              <p><strong>Description:</strong> {{ .Annotations.description }}</p>
+              <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
+              <p><strong>Runbook:</strong> <a href="{{ .Annotations.runbook_url }}">{{ .Annotations.runbook_url }}</a></p>
+              <p><strong>Started at:</strong> {{ .StartsAt }}</p>
+            </div>
+          {{ end }}
+
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#alerts-critical'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          *Severity:* {{ .GroupLabels.severity }}
+          *Component:* {{ .GroupLabels.component }}
+          {{ range .Alerts }}
+          *Description:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook_url }}
+          {{ end }}
+        send_resolved: true
+
+    pagerduty_configs:
+      - service_key: '${PAGERDUTY_SERVICE_KEY}'
+        description: '{{ .GroupLabels.alertname }}: {{ .Annotations.summary }}'
+        details:
+          firing: '{{ template "pagerduty.default.instances" .Alerts.Firing }}'
+          resolved: '{{ template "pagerduty.default.instances" .Alerts.Resolved }}'
+
+  # ML team - for LLM quality issues
+  - name: 'ml-team'
+    email_configs:
+      - to: 'ml-team@yourdomain.com'
+        headers:
+          Subject: '[ML Alert] Solar PV LLM AI - {{ .GroupLabels.alertname }}'
+
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#ml-alerts'
+        title: '🤖 ML Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Component:* {{ .GroupLabels.component }}
+          {{ range .Alerts }}
+          *Issue:* {{ .Annotations.description }}
+          *Action needed:* {{ .Annotations.summary }}
+          *Runbook:* {{ .Annotations.runbook_url }}
+          {{ end }}
+
+  # Infrastructure team - for system and monitoring issues
+  - name: 'infrastructure-team'
+    email_configs:
+      - to: 'infrastructure@yourdomain.com'
+        headers:
+          Subject: '[Infrastructure] Solar PV LLM AI - {{ .GroupLabels.alertname }}'
+
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#infra-alerts'
+        title: '🔧 Infrastructure: {{ .GroupLabels.alertname }}'
+
+  # Backend team - for API issues
+  - name: 'backend-team'
+    email_configs:
+      - to: 'backend-team@yourdomain.com'
+        headers:
+          Subject: '[Backend Alert] Solar PV LLM AI - {{ .GroupLabels.alertname }}'
+
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#backend-alerts'
+        title: '⚙️ Backend Alert: {{ .GroupLabels.alertname }}'

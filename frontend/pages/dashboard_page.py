@@ -1,396 +1,286 @@
 """
-Dashboard Page
-System analytics, health indicators, and usage statistics
+Dashboard Page - Standalone Streamlit page
+System analytics, health indicators, and usage statistics.
 """
-import sys
-from pathlib import Path
-
-# Add project root to Python path for Streamlit Cloud
-project_root = Path(__file__).parent.parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
 
 import streamlit as st
-import plotly.graph_objects as go
-import plotly.express as px
+import sys
+from pathlib import Path
 from datetime import datetime, timedelta
-from backend.api.mock_service import mock_api
-from frontend.utils.ui_components import show_loading
+import random
 
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-def render():
-    """Render the dashboard page"""
-    st.title("📊 System Dashboard")
-    st.markdown(
-        "Monitor system health, usage analytics, and performance metrics in real-time."
-    )
+from api_client import get_client
 
-    # Refresh button
-    col1, col2, col3 = st.columns([1, 1, 4])
-    with col1:
-        if st.button("🔄 Refresh Data", use_container_width=True):
-            st.rerun()
+st.set_page_config(page_title="Dashboard - Solar PV AI", page_icon="📊", layout="wide")
 
-    with col2:
-        auto_refresh = st.checkbox("Auto-refresh", value=False)
+st.title("📊 System Dashboard")
+st.markdown("Monitor system health, usage analytics, and performance metrics.")
 
-    # Get dashboard data
-    with show_loading("Loading dashboard data..."):
-        metrics = mock_api.get_dashboard_metrics()
-        time_series_data = mock_api.get_time_series_data(days=30)
+client = get_client()
 
-    st.divider()
+# Refresh button
+col1, col2, _ = st.columns([1, 1, 4])
+with col1:
+    if st.button("🔄 Refresh", use_container_width=True):
+        st.rerun()
+with col2:
+    auto_refresh = st.checkbox("Auto-refresh")
 
-    # System Health Section
-    st.markdown("### 🏥 System Health")
+st.markdown("---")
 
-    health_data = metrics["system_health"]
-
-    health_col1, health_col2, health_col3, health_col4 = st.columns(4)
-
-    with health_col1:
-        status_color = "🟢" if health_data["status"] == "Healthy" else "🟡"
-        st.metric(
-            "System Status",
-            f"{status_color} {health_data['status']}",
-        )
-
-    with health_col2:
-        st.metric(
-            "Uptime",
-            f"{health_data['uptime_percentage']:.1f}%",
-            delta=f"+{health_data['uptime_percentage'] - 99:.1f}%",
-            delta_color="normal",
-        )
-
-    with health_col3:
-        st.metric(
-            "Active Queries",
-            health_data["active_queries"],
-        )
-
-    with health_col4:
-        response_color = "normal" if health_data["response_time_ms"] < 300 else "inverse"
-        st.metric(
-            "Avg Response",
-            f"{health_data['response_time_ms']} ms",
-            delta=f"{health_data['response_time_ms'] - 250} ms",
-            delta_color=response_color,
-        )
-
-    st.divider()
-
-    # Usage Statistics
-    st.markdown("### 📈 Usage Statistics")
-
-    usage_data = metrics["usage_stats"]
-
-    usage_col1, usage_col2, usage_col3, usage_col4 = st.columns(4)
-
-    with usage_col1:
-        st.metric(
-            "Total Queries",
-            f"{usage_data['total_queries']:,}",
-        )
-
-    with usage_col2:
-        success_rate = (
-            usage_data["successful_queries"] / usage_data["total_queries"] * 100
-        )
-        st.metric(
-            "Success Rate",
-            f"{success_rate:.1f}%",
-            delta=f"{success_rate - 95:.1f}%",
-        )
-
-    with usage_col3:
-        st.metric(
-            "Failed Queries",
-            usage_data["failed_queries"],
-            delta=f"-{usage_data['failed_queries']}",
-            delta_color="inverse",
-        )
-
-    with usage_col4:
-        st.metric(
-            "Avg Response Time",
-            f"{usage_data['avg_response_time']} ms",
-        )
-
-    st.divider()
-
-    # Knowledge Base Section
-    st.markdown("### 📚 Knowledge Base")
-
-    kb_data = metrics["knowledge_base"]
-
-    kb_col1, kb_col2, kb_col3, kb_col4 = st.columns(4)
-
-    with kb_col1:
-        st.metric(
-            "Total Documents",
-            f"{kb_data['total_documents']:,}",
-        )
-
-    with kb_col2:
-        st.metric(
-            "IEC Standards",
-            kb_data["indexed_standards"],
-        )
-
-    with kb_col3:
-        st.metric(
-            "Index Size",
-            f"{kb_data['index_size_mb']} MB",
-        )
-
-    with kb_col4:
-        last_updated = datetime.fromisoformat(kb_data["last_updated"])
-        time_ago = datetime.now() - last_updated
-        st.metric(
-            "Last Updated",
-            f"{time_ago.seconds // 3600}h ago",
-        )
-
-    st.divider()
-
-    # Time Series Charts
-    st.markdown("### 📊 Performance Trends (Last 30 Days)")
-
-    chart_tabs = st.tabs(["Query Volume", "Response Time", "Success Rate"])
-
-    with chart_tabs[0]:
-        # Query volume chart
-        fig_queries = go.Figure()
-        fig_queries.add_trace(
-            go.Scatter(
-                x=time_series_data["date"],
-                y=time_series_data["queries"],
-                mode="lines+markers",
-                fill="tozeroy",
-                line=dict(color="#667eea", width=2),
-                marker=dict(size=6),
-                name="Queries",
-            )
-        )
-        fig_queries.update_layout(
-            title="Daily Query Volume",
-            xaxis_title="Date",
-            yaxis_title="Number of Queries",
-            height=400,
-            hovermode="x unified",
-        )
-        st.plotly_chart(fig_queries, use_container_width=True)
-
-    with chart_tabs[1]:
-        # Response time chart
-        fig_response = go.Figure()
-        fig_response.add_trace(
-            go.Scatter(
-                x=time_series_data["date"],
-                y=time_series_data["response_time"],
-                mode="lines+markers",
-                line=dict(color="#764ba2", width=2),
-                marker=dict(size=6),
-                name="Response Time",
-            )
-        )
-        fig_response.add_hline(
-            y=300,
-            line_dash="dash",
-            line_color="red",
-            annotation_text="Target: 300ms",
-        )
-        fig_response.update_layout(
-            title="Average Response Time",
-            xaxis_title="Date",
-            yaxis_title="Response Time (ms)",
-            height=400,
-            hovermode="x unified",
-        )
-        st.plotly_chart(fig_response, use_container_width=True)
-
-    with chart_tabs[2]:
-        # Success rate chart
-        fig_success = go.Figure()
-        fig_success.add_trace(
-            go.Scatter(
-                x=time_series_data["date"],
-                y=time_series_data["success_rate"],
-                mode="lines+markers",
-                fill="tozeroy",
-                line=dict(color="#28a745", width=2),
-                marker=dict(size=6),
-                name="Success Rate",
-            )
-        )
-        fig_success.add_hline(
-            y=95,
-            line_dash="dash",
-            line_color="orange",
-            annotation_text="Target: 95%",
-        )
-        fig_success.update_layout(
-            title="Query Success Rate",
-            xaxis_title="Date",
-            yaxis_title="Success Rate (%)",
-            height=400,
-            hovermode="x unified",
-        )
-        st.plotly_chart(fig_success, use_container_width=True)
-
-    st.divider()
-
-    # Recent Activity
-    st.markdown("### 🕒 Recent Activity")
-
-    activity_data = metrics["recent_activity"]
-
-    # Display recent activity in a table-like format
-    for activity in activity_data[:10]:
-        timestamp = datetime.fromisoformat(activity["timestamp"])
-        time_ago = datetime.now() - timestamp
-
-        if time_ago.seconds < 60:
-            time_str = f"{time_ago.seconds}s ago"
-        elif time_ago.seconds < 3600:
-            time_str = f"{time_ago.seconds // 60}m ago"
-        else:
-            time_str = f"{time_ago.seconds // 3600}h ago"
-
-        status_icon = (
-            "✅" if activity["status"] == "success"
-            else "⚠️" if activity["status"] == "warning"
-            else "❌"
-        )
-
-        st.markdown(
-            f"""
-            <div style="
-                background-color: {'#d4edda' if activity['status'] == 'success' else '#fff3cd'};
-                padding: 0.75rem;
-                margin: 0.5rem 0;
-                border-radius: 0.5rem;
-                border-left: 4px solid {'#28a745' if activity['status'] == 'success' else '#ffc107'};
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            ">
-                <span><strong>{status_icon} {activity['type']}</strong></span>
-                <span style="color: #666; font-size: 0.9rem;">{time_str}</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.divider()
-
-    # System Information
-    st.markdown("### ⚙️ System Information")
-
-    info_col1, info_col2 = st.columns(2)
-
-    with info_col1:
-        st.markdown(
-            """
-            **Application Details:**
-            - Version: 1.0.0
-            - Environment: Production
-            - Region: US-East
-            - Backend: Active
-            - Database: Connected
-            """
-        )
-
-    with info_col2:
-        st.markdown(
-            """
-            **Performance Targets:**
-            - Uptime: > 99.5%
-            - Response Time: < 300ms
-            - Success Rate: > 95%
-            - Query Capacity: 10,000/day
-            - Index Update: Daily
-            """
-        )
-
-    # Category Distribution
-    st.divider()
-    st.markdown("### 📂 Query Distribution by Category")
-
-    category_data = {
-        "Category": [
-            "Module Testing",
-            "Safety Standards",
-            "Performance Analysis",
-            "Calculations",
-            "Image Analysis",
-            "General Queries",
-        ],
-        "Count": [245, 189, 167, 223, 98, 156],
+# Generate mock dashboard data (since api_client doesn't have dashboard methods)
+def get_dashboard_data():
+    """Generate dashboard metrics"""
+    return {
+        "system_health": {
+            "status": "Healthy",
+            "uptime_percentage": 99.7,
+            "active_queries": random.randint(5, 25),
+            "response_time_ms": random.randint(180, 320)
+        },
+        "usage_stats": {
+            "total_queries": random.randint(8000, 12000),
+            "successful_queries": random.randint(7500, 11500),
+            "failed_queries": random.randint(50, 200),
+            "avg_response_time": random.randint(200, 350)
+        },
+        "knowledge_base": {
+            "total_documents": 1247,
+            "indexed_standards": 42,
+            "index_size_mb": 256.4,
+            "last_updated": (datetime.now() - timedelta(hours=random.randint(1, 12))).isoformat()
+        }
     }
 
-    fig_pie = px.pie(
-        category_data,
-        values="Count",
-        names="Category",
-        color_discrete_sequence=px.colors.sequential.Blues_r,
+with st.spinner("Loading dashboard data..."):
+    metrics = get_dashboard_data()
+
+# System Health Section
+st.markdown("### 🏥 System Health")
+
+health = metrics["system_health"]
+h_col1, h_col2, h_col3, h_col4 = st.columns(4)
+
+with h_col1:
+    status_icon = "🟢" if health["status"] == "Healthy" else "🟡"
+    st.metric("System Status", f"{status_icon} {health['status']}")
+
+with h_col2:
+    st.metric(
+        "Uptime",
+        f"{health['uptime_percentage']:.1f}%",
+        delta=f"+{health['uptime_percentage'] - 99:.1f}%"
     )
-    fig_pie.update_layout(height=400)
 
-    col1, col2 = st.columns([2, 1])
+with h_col3:
+    st.metric("Active Queries", health["active_queries"])
 
-    with col1:
-        st.plotly_chart(fig_pie, use_container_width=True)
+with h_col4:
+    delta_color = "normal" if health["response_time_ms"] < 300 else "inverse"
+    st.metric(
+        "Avg Response",
+        f"{health['response_time_ms']} ms",
+        delta=f"{health['response_time_ms'] - 250} ms",
+        delta_color=delta_color
+    )
 
-    with col2:
-        st.markdown("**Top Categories:**")
-        for idx, (cat, count) in enumerate(
-            zip(category_data["Category"], category_data["Count"]), 1
-        ):
-            percentage = (count / sum(category_data["Count"])) * 100
-            st.markdown(
-                f"{idx}. **{cat}**  \n"
-                f"   {count} queries ({percentage:.1f}%)"
-            )
+st.markdown("---")
 
-    # Export data
-    st.divider()
+# Usage Statistics
+st.markdown("### 📈 Usage Statistics")
 
-    export_col1, export_col2, export_col3 = st.columns(3)
+usage = metrics["usage_stats"]
+u_col1, u_col2, u_col3, u_col4 = st.columns(4)
 
-    with export_col1:
-        if st.button("📥 Export Metrics", use_container_width=True):
-            import json
+with u_col1:
+    st.metric("Total Queries", f"{usage['total_queries']:,}")
 
-            export_data = json.dumps(metrics, indent=2)
-            st.download_button(
-                "Download JSON",
-                export_data,
-                "dashboard_metrics.json",
-                "application/json",
-                use_container_width=True,
-            )
+with u_col2:
+    success_rate = (usage["successful_queries"] / usage["total_queries"]) * 100
+    st.metric(
+        "Success Rate",
+        f"{success_rate:.1f}%",
+        delta=f"{success_rate - 95:.1f}%"
+    )
 
-    with export_col2:
-        if st.button("📊 Export Charts", use_container_width=True):
-            csv_data = time_series_data.to_csv(index=False)
-            st.download_button(
-                "Download CSV",
-                csv_data,
-                "time_series_data.csv",
-                "text/csv",
-                use_container_width=True,
-            )
+with u_col3:
+    st.metric(
+        "Failed Queries",
+        usage["failed_queries"],
+        delta=f"-{usage['failed_queries']}",
+        delta_color="inverse"
+    )
 
-    with export_col3:
-        if st.button("📧 Email Report", use_container_width=True):
-            st.success("Report generation scheduled! Check your email in a few minutes.")
+with u_col4:
+    st.metric("Avg Response Time", f"{usage['avg_response_time']} ms")
 
-    # Auto-refresh logic
-    if auto_refresh:
-        st.info("Dashboard will auto-refresh every 30 seconds.")
-        import time
+st.markdown("---")
 
-        time.sleep(30)
-        st.rerun()
+# Knowledge Base Section
+st.markdown("### 📚 Knowledge Base")
+
+kb = metrics["knowledge_base"]
+kb_col1, kb_col2, kb_col3, kb_col4 = st.columns(4)
+
+with kb_col1:
+    st.metric("Total Documents", f"{kb['total_documents']:,}")
+
+with kb_col2:
+    st.metric("IEC Standards", kb["indexed_standards"])
+
+with kb_col3:
+    st.metric("Index Size", f"{kb['index_size_mb']} MB")
+
+with kb_col4:
+    last_updated = datetime.fromisoformat(kb["last_updated"])
+    time_ago = datetime.now() - last_updated
+    hours_ago = time_ago.seconds // 3600
+    st.metric("Last Updated", f"{hours_ago}h ago")
+
+st.markdown("---")
+
+# Performance Charts (using native Streamlit charts)
+st.markdown("### 📊 Performance Trends (Last 30 Days)")
+
+# Generate time series data
+dates = [(datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(29, -1, -1)]
+queries = [random.randint(200, 500) for _ in range(30)]
+response_times = [random.randint(180, 350) for _ in range(30)]
+success_rates = [random.uniform(94, 99.5) for _ in range(30)]
+
+chart_tabs = st.tabs(["Query Volume", "Response Time", "Success Rate"])
+
+with chart_tabs[0]:
+    st.line_chart(
+        data={"Queries": queries},
+        use_container_width=True
+    )
+    st.caption("Daily query volume over the last 30 days")
+
+with chart_tabs[1]:
+    st.line_chart(
+        data={"Response Time (ms)": response_times},
+        use_container_width=True
+    )
+    st.caption("Average response time in milliseconds")
+
+with chart_tabs[2]:
+    st.line_chart(
+        data={"Success Rate (%)": success_rates},
+        use_container_width=True
+    )
+    st.caption("Query success rate percentage")
+
+st.markdown("---")
+
+# Recent Activity
+st.markdown("### 🕒 Recent Activity")
+
+activities = [
+    {"type": "Chat Query", "status": "success", "time": "2m ago"},
+    {"type": "Standards Search", "status": "success", "time": "5m ago"},
+    {"type": "Calculation", "status": "success", "time": "8m ago"},
+    {"type": "Image Analysis", "status": "warning", "time": "12m ago"},
+    {"type": "Chat Query", "status": "success", "time": "15m ago"},
+    {"type": "Standards Search", "status": "success", "time": "22m ago"},
+]
+
+for activity in activities:
+    status_icon = "✅" if activity["status"] == "success" else "⚠️"
+    bg_color = "#d4edda" if activity["status"] == "success" else "#fff3cd"
+    border_color = "#28a745" if activity["status"] == "success" else "#ffc107"
+
+    st.markdown(
+        f"""
+        <div style="
+            background-color: {bg_color};
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: 0.5rem;
+            border-left: 4px solid {border_color};
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        ">
+            <span><strong>{status_icon} {activity['type']}</strong></span>
+            <span style="color: #666; font-size: 0.9rem;">{activity['time']}</span>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+st.markdown("---")
+
+# System Information
+st.markdown("### ⚙️ System Information")
+
+info_col1, info_col2 = st.columns(2)
+
+with info_col1:
+    st.markdown("""
+    **Application Details:**
+    - Version: 1.0.0
+    - Environment: Production
+    - Region: US-East
+    - Backend: Active
+    - Database: Connected
+    """)
+
+with info_col2:
+    st.markdown("""
+    **Performance Targets:**
+    - Uptime: > 99.5%
+    - Response Time: < 300ms
+    - Success Rate: > 95%
+    - Query Capacity: 10,000/day
+    - Index Update: Daily
+    """)
+
+st.markdown("---")
+
+# Query Distribution
+st.markdown("### 📂 Query Distribution by Category")
+
+categories = ["Module Testing", "Safety Standards", "Performance", "Calculations", "Image Analysis", "General"]
+counts = [245, 189, 167, 223, 98, 156]
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.bar_chart(data=dict(zip(categories, counts)))
+
+with col2:
+    st.markdown("**Top Categories:**")
+    total = sum(counts)
+    for i, (cat, count) in enumerate(zip(categories, counts), 1):
+        pct = (count / total) * 100
+        st.markdown(f"{i}. **{cat}**: {count} ({pct:.1f}%)")
+
+# Export options
+st.markdown("---")
+exp_col1, exp_col2 = st.columns(2)
+
+with exp_col1:
+    if st.button("📥 Export Metrics", use_container_width=True):
+        import json
+        st.download_button(
+            "Download JSON",
+            json.dumps(metrics, indent=2, default=str),
+            "dashboard_metrics.json",
+            "application/json",
+            use_container_width=True
+        )
+
+with exp_col2:
+    if st.button("📧 Email Report", use_container_width=True):
+        st.success("Report generation scheduled! Check your email shortly.")
+
+# Auto-refresh
+if auto_refresh:
+    st.info("Dashboard will auto-refresh every 30 seconds.")
+    import time
+    time.sleep(30)
+    st.rerun()

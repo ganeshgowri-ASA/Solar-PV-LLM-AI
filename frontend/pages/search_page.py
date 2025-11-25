@@ -1,283 +1,261 @@
 """
-Advanced Search Page
-Search IEC standards and technical documents with filters
+Search Page - Standalone Streamlit page
+Advanced search for IEC standards and technical documents.
 """
+
+import streamlit as st
 import sys
 from pathlib import Path
 
-# Add project root to Python path for Streamlit Cloud
-project_root = Path(__file__).parent.parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import streamlit as st
-from backend.api.mock_service import mock_api
-from frontend.utils.ui_components import (
-    show_loading,
-    show_empty_state,
-    create_card,
-)
-from config.settings import IEC_STANDARDS, TEST_TYPES
+from api_client import get_client
 
+st.set_page_config(page_title="Search - Solar PV AI", page_icon="🔍", layout="wide")
 
-def render():
-    """Render the search page"""
-    st.title("🔍 Advanced Search")
-    st.markdown(
-        "Search through IEC standards, technical documents, and testing procedures "
-        "with advanced filtering options."
+st.title("🔍 Advanced Search")
+st.markdown("Search through IEC standards, technical documents, and testing procedures.")
+
+client = get_client()
+
+# Search bar
+search_col1, search_col2 = st.columns([4, 1])
+
+with search_col1:
+    search_query = st.text_input(
+        "Search",
+        placeholder="Enter keywords: e.g., 'thermal cycling', 'module safety', 'IEC 61215'",
+        label_visibility="collapsed"
     )
 
-    # Search bar
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        search_query = st.text_input(
-            "Search",
-            placeholder="Enter keywords: e.g., 'thermal cycling', 'module safety', 'IEC 61215'",
-            label_visibility="collapsed",
-        )
-    with col2:
-        search_button = st.button("🔍 Search", use_container_width=True, type="primary")
+with search_col2:
+    search_button = st.button("🔍 Search", use_container_width=True, type="primary")
 
-    st.divider()
+st.markdown("---")
 
-    # Filters in columns
-    st.markdown("### 🎯 Filters")
-    filter_col1, filter_col2, filter_col3 = st.columns(3)
+# Filters
+st.markdown("### 🎯 Filters")
 
-    with filter_col1:
-        category_filter = st.multiselect(
-            "Categories",
-            options=[
-                "Module Testing",
-                "Safety",
-                "Performance",
-                "Systems",
-                "Measurements",
-            ],
-            default=[],
-        )
+filter_col1, filter_col2, filter_col3 = st.columns(3)
 
-    with filter_col2:
-        difficulty_filter = st.multiselect(
-            "Difficulty Level",
-            options=["Beginner", "Intermediate", "Advanced"],
-            default=[],
-        )
+with filter_col1:
+    category_filter = st.multiselect(
+        "Categories",
+        options=["Module Testing", "Safety", "Performance", "Systems", "Measurements"],
+        default=[]
+    )
 
-    with filter_col3:
-        sort_by = st.selectbox(
-            "Sort By",
-            options=["Relevance", "Title (A-Z)", "Title (Z-A)", "Most Recent"],
-            index=0,
+with filter_col2:
+    difficulty_filter = st.multiselect(
+        "Difficulty Level",
+        options=["Beginner", "Intermediate", "Advanced"],
+        default=[]
+    )
+
+with filter_col3:
+    sort_by = st.selectbox(
+        "Sort By",
+        options=["Relevance", "Title (A-Z)", "Title (Z-A)", "Most Recent"],
+        index=0
+    )
+
+# Additional filters
+with st.expander("🔧 More Filters"):
+    more_col1, more_col2 = st.columns(2)
+
+    with more_col1:
+        standard_types = st.multiselect(
+            "Standard Types",
+            options=["IEC", "IEEE", "UL", "NFPA", "ASTM"],
+            default=[]
         )
 
-    # Additional filters in expander
-    with st.expander("🔧 More Filters"):
-        filter_col4, filter_col5 = st.columns(2)
+    with more_col2:
+        max_results = st.slider("Max Results", 5, 50, 20)
 
-        with filter_col4:
-            test_type_filter = st.multiselect(
-                "Test Types",
-                options=TEST_TYPES,
-                default=[],
-            )
+st.markdown("---")
 
-        with filter_col5:
-            min_sections = st.slider(
-                "Minimum Sections",
-                min_value=1,
-                max_value=20,
-                value=1,
-            )
-
-    st.divider()
-
-    # Perform search
-    if search_button or search_query:
-        with show_loading("Searching..."):
-            results = mock_api.search_standards(
+# Perform search
+if search_button or search_query:
+    with st.spinner("Searching..."):
+        try:
+            response = client.search_standards(
                 query=search_query,
+                standard_types=standard_types if standard_types else None,
                 categories=category_filter if category_filter else None,
-                difficulty=difficulty_filter if difficulty_filter else None,
+                max_results=max_results
             )
 
-            # Apply additional filters
-            if min_sections > 1:
-                results = [r for r in results if r["test_count"] >= min_sections]
+            if response.success:
+                results = response.data.get("results", [])
+                total_count = response.data.get("total_count", len(results))
+                st.session_state.search_results = results
+                st.session_state.search_total = total_count
+            else:
+                st.error(f"Search failed: {response.error}")
+                st.session_state.search_results = []
+        except Exception as e:
+            st.error(f"Search error: {str(e)}")
+            st.session_state.search_results = []
 
-            # Store results in session state
-            st.session_state.search_results = results
+# Display results
+if "search_results" in st.session_state:
+    results = st.session_state.search_results
+    total = st.session_state.get("search_total", len(results))
 
-    # Display results
-    if hasattr(st.session_state, "search_results"):
-        results = st.session_state.search_results
-
-        if len(results) == 0:
-            show_empty_state(
-                title="No Results Found",
-                message="Try adjusting your search query or filters.",
-                icon="🔍",
-            )
-        else:
-            # Results header
-            st.markdown(f"### 📊 Results ({len(results)} found)")
-
-            # Display type selector
-            view_type = st.radio(
-                "View as:",
-                ["Cards", "List", "Table"],
-                horizontal=True,
-                label_visibility="collapsed",
-            )
-
-            st.divider()
-
-            if view_type == "Cards":
-                # Card view
-                for result in results:
-                    with st.container():
-                        col1, col2 = st.columns([4, 1])
-
-                        with col1:
-                            st.markdown(
-                                f"""
-                                <div class="dashboard-card">
-                                    <h3 style="margin: 0 0 0.5rem 0; color: #333;">
-                                        {result['title']}
-                                    </h3>
-                                    <p style="color: #666; margin: 0 0 0.75rem 0;">
-                                        {result['description']}
-                                    </p>
-                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                        <span class="status-badge status-online">
-                                            📁 {result['category']}
-                                        </span>
-                                        <span class="status-badge" style="background-color: #e3f2fd; color: #0d47a1;">
-                                            📊 {result['test_count']} tests
-                                        </span>
-                                        <span class="status-badge" style="background-color: #f3e5f5; color: #4a148c;">
-                                            🎯 {result['difficulty']}
-                                        </span>
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
-
-                        with col2:
-                            if st.button(
-                                "View Details",
-                                key=f"view_{result['id']}",
-                                use_container_width=True,
-                            ):
-                                st.session_state.selected_standard = result["id"]
-                                st.session_state.selected_page = "Standards Library"
-                                st.rerun()
-
-            elif view_type == "List":
-                # List view
-                for idx, result in enumerate(results, 1):
-                    with st.expander(
-                        f"{idx}. {result['title']} - {result['category']}", expanded=False
-                    ):
-                        st.markdown(f"**Description:** {result['description']}")
-                        st.markdown(f"**Category:** {result['category']}")
-                        st.markdown(f"**Difficulty:** {result['difficulty']}")
-                        st.markdown(f"**Number of Tests:** {result['test_count']}")
-
-                        st.markdown("**Key Sections:**")
-                        for section in result["sections"][:5]:
-                            st.markdown(f"- {section}")
-
-                        if len(result["sections"]) > 5:
-                            st.caption(f"...and {len(result['sections']) - 5} more")
-
-                        if st.button(
-                            "View Full Standard",
-                            key=f"list_view_{result['id']}",
-                            use_container_width=True,
-                        ):
-                            st.session_state.selected_standard = result["id"]
-                            st.session_state.selected_page = "Standards Library"
-                            st.rerun()
-
-            else:  # Table view
-                import pandas as pd
-
-                table_data = pd.DataFrame(
-                    [
-                        {
-                            "Title": r["title"],
-                            "Category": r["category"],
-                            "Tests": r["test_count"],
-                            "Difficulty": r["difficulty"],
-                        }
-                        for r in results
-                    ]
-                )
-
-                st.dataframe(
-                    table_data,
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
-            # Export results
-            st.divider()
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                if st.button("📥 Export as CSV", use_container_width=True):
-                    import pandas as pd
-
-                    df = pd.DataFrame(results)
-                    csv = df.to_csv(index=False)
-                    st.download_button(
-                        "Download CSV",
-                        csv,
-                        "search_results.csv",
-                        "text/csv",
-                        use_container_width=True,
-                    )
-
-            with col2:
-                if st.button("📋 Copy Results", use_container_width=True):
-                    st.info("Results copied to clipboard!")
-
-            with col3:
-                if st.button("🔄 Clear Filters", use_container_width=True):
-                    st.rerun()
-
+    if len(results) == 0:
+        st.info("🔍 No results found. Try adjusting your search query or filters.")
     else:
-        # Initial state
-        show_empty_state(
-            title="Start Searching",
-            message="Enter a search query and apply filters to find relevant IEC standards and documents.",
-            icon="🔍",
+        st.success(f"Found {total} results")
+
+        # View type selector
+        view_type = st.radio(
+            "View as:",
+            ["Cards", "List", "Table"],
+            horizontal=True,
+            label_visibility="collapsed"
         )
 
-        # Show popular searches
-        st.markdown("### 🔥 Popular Searches")
-        popular_col1, popular_col2, popular_col3 = st.columns(3)
+        st.markdown("---")
 
-        popular_searches = [
-            ("Module Testing", "🔬"),
-            ("Safety Standards", "🛡️"),
-            ("Performance Tests", "📊"),
-            ("Thermal Testing", "🌡️"),
-            ("Grid Connection", "⚡"),
-            ("Measurements", "📏"),
-        ]
+        if view_type == "Cards":
+            for result in results:
+                with st.container():
+                    r_col1, r_col2 = st.columns([4, 1])
 
-        for idx, (search_term, icon) in enumerate(popular_searches):
-            col = [popular_col1, popular_col2, popular_col3][idx % 3]
-            with col:
-                if st.button(
-                    f"{icon} {search_term}",
-                    key=f"popular_{idx}",
-                    use_container_width=True,
-                ):
-                    results = mock_api.search_standards(query=search_term)
-                    st.session_state.search_results = results
-                    st.rerun()
+                    with r_col1:
+                        st.markdown(f"### {result.get('standard_code', '')} - {result.get('title', 'Untitled')}")
+                        st.markdown(result.get("summary", result.get("description", "No description available")))
+
+                        tag_col1, tag_col2, tag_col3 = st.columns(3)
+                        with tag_col1:
+                            st.caption(f"📁 {result.get('category', 'General')}")
+                        with tag_col2:
+                            relevance = result.get("relevance_score", 0)
+                            if isinstance(relevance, (int, float)):
+                                st.caption(f"🎯 Relevance: {relevance:.0%}")
+                        with tag_col3:
+                            sections = result.get("sections", [])
+                            if sections:
+                                st.caption(f"📄 {len(sections)} sections")
+
+                    with r_col2:
+                        if st.button("View Details", key=f"view_{result.get('standard_code', id(result))}", use_container_width=True):
+                            st.session_state.selected_standard = result
+                            st.info(f"Selected: {result.get('title', 'Standard')}")
+
+                    st.markdown("---")
+
+        elif view_type == "List":
+            for idx, result in enumerate(results, 1):
+                with st.expander(f"{idx}. {result.get('standard_code', '')} - {result.get('title', 'Untitled')}"):
+                    st.markdown(f"**Description:** {result.get('summary', result.get('description', 'N/A'))}")
+                    st.markdown(f"**Category:** {result.get('category', 'General')}")
+
+                    relevance = result.get("relevance_score", 0)
+                    if isinstance(relevance, (int, float)):
+                        st.markdown(f"**Relevance:** {relevance:.0%}")
+
+                    sections = result.get("sections", [])
+                    if sections:
+                        st.markdown("**Sections:**")
+                        for section in sections[:5]:
+                            st.markdown(f"- {section}")
+                        if len(sections) > 5:
+                            st.caption(f"...and {len(sections) - 5} more")
+
+        else:  # Table view
+            import pandas as pd
+
+            table_data = pd.DataFrame([
+                {
+                    "Code": r.get("standard_code", ""),
+                    "Title": r.get("title", "Untitled"),
+                    "Category": r.get("category", "General"),
+                    "Relevance": f"{r.get('relevance_score', 0):.0%}" if isinstance(r.get("relevance_score"), (int, float)) else "N/A"
+                }
+                for r in results
+            ])
+
+            st.dataframe(table_data, use_container_width=True, hide_index=True)
+
+        # Export options
+        st.markdown("---")
+        exp_col1, exp_col2, exp_col3 = st.columns(3)
+
+        with exp_col1:
+            import pandas as pd
+            df = pd.DataFrame(results)
+            csv = df.to_csv(index=False)
+            st.download_button(
+                "📥 Export CSV",
+                csv,
+                "search_results.csv",
+                "text/csv",
+                use_container_width=True
+            )
+
+        with exp_col2:
+            if st.button("📋 Copy Results", use_container_width=True):
+                st.info("Results copied to clipboard!")
+
+        with exp_col3:
+            if st.button("🔄 Clear Filters", use_container_width=True):
+                st.session_state.search_results = None
+                st.rerun()
+
+else:
+    # Initial state - show popular searches
+    st.info("🔍 Enter a search query and apply filters to find relevant standards and documents.")
+
+    st.markdown("### 🔥 Popular Searches")
+
+    popular_searches = [
+        ("Module Testing", "🔬"),
+        ("Safety Standards", "🛡️"),
+        ("Performance Tests", "📊"),
+        ("Thermal Testing", "🌡️"),
+        ("Grid Connection", "⚡"),
+        ("Measurements", "📏")
+    ]
+
+    pop_cols = st.columns(3)
+
+    for idx, (term, icon) in enumerate(popular_searches):
+        with pop_cols[idx % 3]:
+            if st.button(f"{icon} {term}", key=f"popular_{idx}", use_container_width=True):
+                # Perform quick search
+                try:
+                    response = client.search_standards(query=term, max_results=20)
+                    if response.success:
+                        st.session_state.search_results = response.data.get("results", [])
+                        st.session_state.search_total = response.data.get("total_count", 0)
+                except Exception:
+                    st.session_state.search_results = []
+                st.rerun()
+
+    # Quick reference
+    st.markdown("---")
+    st.markdown("### 📚 Quick Reference")
+
+    ref_col1, ref_col2 = st.columns(2)
+
+    with ref_col1:
+        st.markdown("""
+        **Common IEC Standards:**
+        - **IEC 61215** - Module Design Qualification
+        - **IEC 61730** - Module Safety
+        - **IEC 62446** - Grid Connection
+        - **IEC 60904** - Measurements
+        - **IEC 61724** - Performance Monitoring
+        """)
+
+    with ref_col2:
+        st.markdown("""
+        **By Testing Phase:**
+        - **Design**: IEC 61215, IEC 61853
+        - **Safety**: IEC 61730, IEC 62109
+        - **Installation**: IEC 62446
+        - **Monitoring**: IEC 61724
+        """)

@@ -101,7 +101,19 @@ if uploaded_file is not None:
         if st.button("🚀 Start Analysis", type="primary", use_container_width=True):
             with st.spinner("Analyzing image... This may take a moment."):
                 try:
-                    response = client.analyze_image(uploaded_file)
+                    # Map analysis type to API values
+                    analysis_type_map = {
+                        "Comprehensive": "general",
+                        "Visual Only": "defect_detection",
+                        "Thermal Only": "shading",
+                        "Performance Only": "layout"
+                    }
+                    api_analysis_type = analysis_type_map.get(analysis_type, "general")
+                    response = client.analyze_image(
+                        uploaded_file.getvalue(),
+                        analysis_type=api_analysis_type,
+                        include_recommendations=True
+                    )
 
                     if response.success:
                         st.session_state.image_analysis = response.data

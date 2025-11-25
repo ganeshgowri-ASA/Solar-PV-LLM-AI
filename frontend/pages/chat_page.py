@@ -52,7 +52,7 @@ for message in st.session_state.chat_messages:
         if message.get("sources"):
             with st.expander("📚 Sources"):
                 for source in message["sources"]:
-                    st.markdown(f"- **{source.get('title', 'Source')}**: {source.get('excerpt', '')}")
+                    st.markdown(f"- **{source.get('source', 'Source')}**: {source.get('text', '')}")
 
 # Empty state
 if len(st.session_state.chat_messages) == 0:
@@ -79,15 +79,15 @@ if user_input:
                 )
 
                 if response.success:
-                    answer = response.data.get("answer", "I apologize, but I couldn't generate a response.")
-                    sources = response.data.get("sources", [])
+                    answer = response.data.get("response", "I apologize, but I couldn't generate a response.")
+                    sources = response.data.get("citations", [])
 
                     st.markdown(answer)
 
                     if sources and include_sources:
                         with st.expander("📚 Sources"):
                             for source in sources:
-                                st.markdown(f"- **{source.get('title', 'Source')}**: {source.get('excerpt', '')}")
+                                st.markdown(f"- **{source.get('source', 'Source')}**: {source.get('text', '')}")
 
                     # Add to history
                     st.session_state.chat_messages.append({
@@ -166,8 +166,8 @@ for i, question in enumerate(suggested):
                 )
 
                 if response.success:
-                    answer = response.data.get("answer", "I couldn't generate a response.")
-                    sources = response.data.get("sources", [])
+                    answer = response.data.get("response", "I couldn't generate a response.")
+                    sources = response.data.get("citations", [])
                     st.session_state.chat_messages.append({
                         "role": "assistant",
                         "content": answer,

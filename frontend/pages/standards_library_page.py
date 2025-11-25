@@ -185,7 +185,7 @@ if "selected_library_standard" in st.session_state and st.session_state.selected
                         )
                         if response.success:
                             st.markdown("### Answer")
-                            st.markdown(response.data.get("answer", "No answer available."))
+                            st.markdown(response.data.get("response", "No answer available."))
                         else:
                             st.error(f"Error: {response.error}")
                     except Exception as e:

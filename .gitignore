@@ -1,3 +1,15 @@
+# =============================================================================
+# Solar PV LLM AI Platform - Git Ignore Configuration
+# =============================================================================
+
+# Environment variables (NEVER commit actual .env files!)
+.env
+.env.local
+.env.*.local
+
+# Keep .env.example for reference
+!.env.example
+
 # Python
 __pycache__/
 *.py[cod]
@@ -26,12 +38,47 @@ wheels/
 env/
 venv/
 ENV/
+venv/
+ENV/
+env/
+.venv/
+
+# Environment files
+.env
+.env.local
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
 
 # OS
 .DS_Store
@@ -45,3 +92,54 @@ out/
 # Logs
 *.log
 logs/
+.tox/
+.nox/
+
+# Data files
+*.pdf
+data/raw/*
+data/processed/*
+data/output/*
+!data/.gitkeep
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/output/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Model files
+models/
+*.pkl
+*.joblib
+*.h5
+*.pth
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database
+*.db
+*.sqlite3
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node (if frontend)
+node_modules/
+
+# Secrets and credentials
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# Docker
+.docker/

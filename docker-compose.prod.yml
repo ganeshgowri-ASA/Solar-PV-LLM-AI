@@ -1,0 +1,44 @@
+# =============================================================================
+# Docker Compose Override for Production
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+# =============================================================================
+
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      - ENVIRONMENT=production
+      - API_RELOAD=false
+      - LOG_LEVEL=INFO
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    command: nginx -g 'daemon off;'
+    restart: always
+
+  celery-worker:
+    command: celery -A celery_app worker --loglevel=info --concurrency=8
+    restart: always
+
+  celery-beat:
+    restart: always
+
+  flower:
+    restart: always
+
+  postgres:
+    restart: always
+
+  redis:
+    restart: always
+
+  prometheus:
+    restart: always
+
+  grafana:
+    restart: always

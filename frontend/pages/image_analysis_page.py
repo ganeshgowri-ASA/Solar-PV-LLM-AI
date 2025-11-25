@@ -2,6 +2,14 @@
 Image Analysis Page
 Upload and analyze solar panel images for defects and performance issues
 """
+import sys
+from pathlib import Path
+
+# Add project root to Python path for Streamlit Cloud
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import streamlit as st
 from backend.api.mock_service import mock_api
 from frontend.utils.ui_components import (

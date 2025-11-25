@@ -30,17 +30,28 @@ with col2:
 
 # Filters
 with st.expander("Filters"):
-    categories_resp = client.get_categories()
-    categories = categories_resp.data if categories_resp.success else []
+    try:
+        categories_resp = client.get_categories()
+        if categories_resp and categories_resp.success and categories_resp.data:
+            categories = categories_resp.data
+        else:
+            categories = ["Safety", "Performance", "Installation", "Electrical", "Design", "Maintenance", "Grid Integration", "Testing", "Certification"]
+    except Exception:
+        categories = ["Safety", "Performance", "Installation", "Electrical", "Design", "Maintenance", "Grid Integration", "Testing", "Certification"]
 
     selected_cats = st.multiselect("Categories", categories)
     max_results = st.slider("Max Results", 5, 50, 10)
+
+    # Standard type filter
+    standard_types = ["IEC", "IEEE", "UL", "NFPA", "ASTM"]
+    selected_types = st.multiselect("Standard Types", standard_types)
 
 # Search
 if search and query:
     with st.spinner("Searching..."):
         response = client.search_standards(
             query=query,
+            standard_types=selected_types if selected_types else None,
             categories=selected_cats if selected_cats else None,
             max_results=max_results
         )

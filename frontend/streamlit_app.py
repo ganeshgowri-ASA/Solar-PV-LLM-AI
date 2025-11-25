@@ -4,25 +4,34 @@ Main application with real API integration.
 """
 
 import sys
+import os
 from pathlib import Path
 
-# Add project root to Python path for Streamlit Cloud
+# Add both project root and frontend directory to Python path for Streamlit Cloud
 project_root = Path(__file__).parent.parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+frontend_dir = Path(__file__).parent
+
+# Add paths for imports - frontend dir first for api_client, then project root
+for path in [str(frontend_dir), str(project_root)]:
+    if path not in sys.path:
+        sys.path.insert(0, path)
 
 import streamlit as st
 import time
 from typing import Optional
 
-# Import API client
-from api_client import (
-    get_client,
-    SolarPVAPIClient,
-    ExpertiseLevel,
-    CalculationType,
-    APIResponse
-)
+# Import API client with error handling
+try:
+    from api_client import (
+        get_client,
+        SolarPVAPIClient,
+        ExpertiseLevel,
+        CalculationType,
+        APIResponse
+    )
+except ImportError as e:
+    st.error(f"Failed to import API client: {e}. Please ensure api_client.py is in the frontend directory.")
+    st.stop()
 
 
 # ============ Page Configuration ============
@@ -130,22 +139,32 @@ def init_session_state():
 
 def get_api_client() -> SolarPVAPIClient:
     """Get or create API client."""
-    if st.session_state.api_client is None:
-        st.session_state.api_client = get_client()
-    return st.session_state.api_client
+    try:
+        if st.session_state.get("api_client") is None:
+            st.session_state.api_client = get_client()
+        return st.session_state.api_client
+    except Exception as e:
+        st.error(f"Failed to initialize API client: {e}")
+        return get_client()  # Return a new client as fallback
 
 
 def check_backend_status() -> bool:
     """Check backend status (cached for 30 seconds)."""
-    current_time = time.time()
+    try:
+        current_time = time.time()
 
-    # Check every 30 seconds
-    if current_time - st.session_state.last_health_check > 30:
-        client = get_api_client()
-        st.session_state.backend_status = client.is_healthy()
-        st.session_state.last_health_check = current_time
+        # Check every 30 seconds
+        if current_time - st.session_state.get("last_health_check", 0) > 30:
+            try:
+                client = get_api_client()
+                st.session_state.backend_status = client.is_healthy()
+            except Exception:
+                st.session_state.backend_status = False
+            st.session_state.last_health_check = current_time
 
-    return st.session_state.backend_status
+        return st.session_state.get("backend_status", False)
+    except Exception:
+        return False
 
 
 # ============ Sidebar ============
@@ -705,21 +724,33 @@ def render_image_analysis_page():
 
 def main():
     """Main application entry point."""
-    # Initialize session state
-    init_session_state()
+    try:
+        # Initialize session state
+        init_session_state()
 
-    # Render sidebar and get selected page
-    page = render_sidebar()
+        # Render sidebar and get selected page
+        try:
+            page = render_sidebar()
+        except Exception as e:
+            st.error(f"Error rendering sidebar: {e}")
+            page = "Chat Assistant"  # Default page
 
-    # Render selected page
-    if page == "Chat Assistant":
-        render_chat_page()
-    elif page == "Standards Search":
-        render_search_page()
-    elif page == "Calculator":
-        render_calculator_page()
-    elif page == "Image Analysis":
-        render_image_analysis_page()
+        # Render selected page
+        try:
+            if page == "Chat Assistant":
+                render_chat_page()
+            elif page == "Standards Search":
+                render_search_page()
+            elif page == "Calculator":
+                render_calculator_page()
+            elif page == "Image Analysis":
+                render_image_analysis_page()
+        except Exception as e:
+            st.error(f"Error rendering page: {e}")
+            st.info("Please try refreshing the page or contact support if the issue persists.")
+    except Exception as e:
+        st.error(f"Application error: {e}")
+        st.info("Please refresh the page to try again.")
 
 
 if __name__ == "__main__":

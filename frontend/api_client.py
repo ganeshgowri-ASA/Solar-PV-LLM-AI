@@ -22,6 +22,17 @@ class ExpertiseLevel(Enum):
     EXPERT = "expert"
 
 
+class CalculationType(Enum):
+    """Types of solar PV calculations available"""
+    SYSTEM_SIZE = "system_size"
+    ENERGY_OUTPUT = "energy_output"
+    ROI = "roi"
+    PAYBACK_PERIOD = "payback_period"
+    PANEL_COUNT = "panel_count"
+    INVERTER_SIZE = "inverter_size"
+    BATTERY_SIZE = "battery_size"
+
+
 @dataclass
 class APIResponse:
     """Standardized API response wrapper"""

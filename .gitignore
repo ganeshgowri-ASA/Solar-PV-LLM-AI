@@ -33,6 +33,11 @@ wheels/
 *.egg
 
 # Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
 venv/
 ENV/
 env/
@@ -45,6 +50,8 @@ env/
 # IDE
 .idea/
 .vscode/
+*.swp
+*.swo
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
@@ -76,6 +83,15 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Node
+node_modules/
+.next/
+out/
+
+# Logs
+*.log
+logs/
 .tox/
 .nox/
 
